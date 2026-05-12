@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <h1>{{ trip.name }}</h1>
+  <p class="eyebrow">{{ trip.start_date }} - {{ trip.end_date }}</p>
+
+  <div class="actions">
+    <a class="button" href="{% url 'trip_update' trip.pk %}">Edit trip</a>
+    <a class="button secondary" href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>
+    <form method="post" action="{% url 'trip_apply_task_templates' trip.pk %}">
+      {% csrf_token %}
+      <button class="button secondary" type="submit">Add all tasks</button>
+    </form>
+  </div>
+
+  <section class="grid">
+    <div class="panel">
+      <h2>Details</h2>
+      <p><strong>Status:</strong> <span class="status">{{ trip.status }}</span></p>
+      <p><strong>Trip ID:</strong> #{{ trip.id }}</p>
+      <p><strong>Trip manager:</strong> {{ trip.trip_manager }}</p>
+      <p><strong>Created by:</strong> {{ trip.created_by|default:"-" }}</p>
+      <p><strong>Trip leader:</strong> {{ trip.trip_leader|default:"-" }}</p>
+    </div>
+    <div class="panel">
+      <h2>Notes</h2>
+      <div>{{ trip.notes|safe|default:"No notes yet." }}</div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:18px">
+    <h2>Tasks</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Assigned to</th>
+          <th>Status</th>
+          <th>Due</th>
+          <th>Days before trip</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in trip.tasks.all %}
+          <tr>
+            <td><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
+            <td>{{ task.assigned_to|default:"Unassigned" }}</td>
+            <td><span class="status {% if task.status != 'done' %}warn{% endif %}">{{ task.get_status_display }}</span></td>
+            <td>{{ task.due_date|default:"-" }}</td>
+            <td>{{ task.days_to_before_trip|default:"-" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No tasks linked to this trip yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Task Templates | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <style>
+    .drag-handle {
+      background: transparent;
+      border: 0;
+      color: var(--muted);
+      cursor: grab;
+      font-size: 20px;
+      min-height: 32px;
+      padding: 0 8px 0 0;
+    }
+    .dragging {
+      opacity: 0.45;
+    }
+    .template-actions {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+    }
+    .delete-button {
+      background: #fff;
+      border-color: #b83a3a;
+      color: #9f2d2d;
+    }
+  </style>
+
+  <h1>Task Templates</h1>
+  <p class="eyebrow">Reusable trip tasks that can be applied to each new trip.</p>
+
+  <div class="actions">
+    <a class="button" href="{% url 'task_template_create' %}">Create template</a>
+  </div>
+
+  <table id="task-template-table">
+    <thead>
+      <tr>
+        <th>Sort</th>
+        <th>Name</th>
+        <th>Day offset</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="task-template-rows">
+      {% for template in task_templates %}
+        <tr draggable="true" data-template-id="{{ template.pk }}">
+          <td>
+            <button class="drag-handle" type="button" aria-label="Drag to reorder">&#9776;</button>
+          </td>
+          <td><a href="{% url 'task_template_update' template.pk %}">{{ template.name }}</a></td>
+          <td>{{ template.days_to_before_trip|default:"No default" }}</td>
+          <td><span class="status">{{ template.is_active|yesno:"Active,Inactive" }}</span></td>
+          <td>
+            <div class="template-actions">
+              <a href="{% url 'task_template_update' template.pk %}">Edit</a>
+              <form
+                method="post"
+                action="{% url 'task_template_delete' template.pk %}"
+                onsubmit="return confirm('Delete this task template? Existing trip tasks will stay in place.');"
+              >
+                {% csrf_token %}
+                <button class="button secondary delete-button" type="submit">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No task templates yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    const rows = document.getElementById("task-template-rows");
+    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+    let draggedRow = null;
+
+    function rowAfterPointer(container, y) {
+      const draggableRows = [...container.querySelectorAll("tr[data-template-id]:not(.dragging)")];
+      return draggableRows.reduce((closest, row) => {
+        const box = row.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset, row };
+        }
+        return closest;
+      }, { offset: Number.NEGATIVE_INFINITY, row: null }).row;
+    }
+
+    function saveTemplateOrder() {
+      const body = new URLSearchParams();
+      rows.querySelectorAll("tr[data-template-id]").forEach((row) => {
+        body.append("template_ids[]", row.dataset.templateId);
+      });
+
+      fetch("{% url 'task_template_reorder' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+      });
+    }
+
+    rows?.addEventListener("dragstart", (event) => {
+      draggedRow = event.target.closest("tr[data-template-id]");
+      draggedRow?.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+    });
+
+    rows?.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      const nextRow = rowAfterPointer(rows, event.clientY);
+      if (!draggedRow) return;
+      if (nextRow) {
+        rows.insertBefore(draggedRow, nextRow);
+      } else {
+        rows.appendChild(draggedRow);
+      }
+    });
+
+    rows?.addEventListener("dragend", () => {
+      draggedRow?.classList.remove("dragging");
+      draggedRow = null;
+      saveTemplateOrder();
+    });
+  </script>
+{% endblock %}

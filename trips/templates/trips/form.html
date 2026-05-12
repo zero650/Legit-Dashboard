@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Form | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <h1>{{ form_title }}</h1>
+  <p class="eyebrow">Required fields are enforced by the form.</p>
+
+  <form method="post" class="fields">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {{ field.errors }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit">Save</button>
+  </form>
+{% endblock %}

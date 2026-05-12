@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Trips | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <h1>Trips</h1>
+  <p class="eyebrow">All group travel projects in one queue.</p>
+  <div class="actions">
+    <a class="button" href="{% url 'trip_create' %}">Create trip</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Dates</th>
+        <th>Leader</th>
+        <th>Manager</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for trip in trips %}
+        <tr>
+          <td>#{{ trip.id }}</td>
+          <td><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></td>
+          <td>{{ trip.start_date }} - {{ trip.end_date }}</td>
+          <td>{{ trip.trip_leader|default:"-" }}</td>
+          <td>{{ trip.trip_manager }}</td>
+          <td><span class="status">{{ trip.status }}</span></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">No trips yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

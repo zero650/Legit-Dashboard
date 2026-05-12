@@ -1,0 +1,102 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .permission-matrix {
+      overflow-x: auto;
+    }
+    .permission-matrix table {
+      min-width: 900px;
+      width: 100%;
+    }
+    .permission-matrix th,
+    .permission-matrix td {
+      text-align: center;
+      vertical-align: middle;
+    }
+    .permission-matrix th:first-child,
+    .permission-matrix td:first-child {
+      left: 0;
+      position: sticky;
+      text-align: left;
+      z-index: 1;
+    }
+    .permission-matrix th:first-child {
+      background: var(--darkened-bg);
+    }
+    .permission-matrix td:first-child {
+      background: var(--body-bg);
+      min-width: 320px;
+    }
+    .permission-name {
+      color: var(--body-quiet-color);
+      display: block;
+      font-size: 12px;
+    }
+    .submit-row {
+      margin: 0 0 16px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <p>Update which permissions belong to each role.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      {% if has_change_permission %}
+        <div class="submit-row">
+          <input type="submit" value="Save permissions" class="default">
+        </div>
+      {% endif %}
+
+      <div class="permission-matrix module">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Permission</th>
+              {% for role in roles %}
+                <th scope="col">{{ role.name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in permission_rows %}
+              <tr>
+                <td>
+                  {{ row.permission.name }}
+                  <span class="permission-name">{{ row.label }}</span>
+                </td>
+                {% for role_permission in row.roles %}
+                  <td>
+                    <input
+                      type="checkbox"
+                      name="{{ role_permission.field_name }}"
+                      {% if role_permission.checked %}checked{% endif %}
+                      {% if not has_change_permission %}disabled{% endif %}
+                      aria-label="{{ role_permission.role.name }}: {{ row.permission.name }}"
+                    >
+                  </td>
+                {% endfor %}
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="{{ roles|length|add:'1' }}">No permissions found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if has_change_permission %}
+        <div class="submit-row">
+          <input type="submit" value="Save permissions" class="default">
+        </div>
+      {% endif %}
+    </form>
+  </div>
+{% endblock %}
+

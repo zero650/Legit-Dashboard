@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Trip Dashboard | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <h1>Trip Operations</h1>
+  <p class="eyebrow">Track trips, responsibilities, due dates, and open work.</p>
+
+  <section class="grid" aria-label="Dashboard metrics">
+    <div class="panel metric"><strong>{{ trip_count }}</strong>Total trips</div>
+    <div class="panel metric"><strong>{{ open_task_count }}</strong>Open tasks</div>
+    <div class="panel metric"><strong>{{ task_template_count }}</strong>Active task templates</div>
+  </section>
+
+  <div class="actions">
+    <a class="button" href="{% url 'trip_create' %}">Create trip</a>
+    <a class="button secondary" href="{% url 'task_create' %}">Create task</a>
+    <a class="button secondary" href="{% url 'task_template_list' %}">Manage templates</a>
+  </div>
+
+  <section class="panel">
+    <h2>Upcoming trips</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Trip</th>
+          <th>Dates</th>
+          <th>Manager</th>
+          <th>Status</th>
+          <th>Open tasks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for trip in upcoming_trips %}
+          <tr>
+            <td><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a>{% if trip.trip_leader %}<br>{{ trip.trip_leader }}{% endif %}</td>
+            <td>{{ trip.start_date }} - {{ trip.end_date }}</td>
+            <td>{{ trip.trip_manager }}</td>
+            <td><span class="status">{{ trip.status }}</span></td>
+            <td>{{ trip.open_tasks }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No trips yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel" style="margin-top:18px">
+    <h2>Open tasks</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Trip</th>
+          <th>Assigned to</th>
+          <th>Status</th>
+          <th>Due</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in open_tasks %}
+          <tr>
+            <td><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
+            <td><a href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a></td>
+            <td>{{ task.assigned_to|default:"Unassigned" }}</td>
+            <td><span class="status warn">{{ task.get_status_display }}</span></td>
+            <td>{{ task.due_date|default:"No due date" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No open tasks.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

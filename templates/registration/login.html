@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Log in | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <h1>Staff Login</h1>
+  <p class="eyebrow">Sign in to manage Legit Trips operations.</p>
+
+  <form method="post" class="fields">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>
+      <label for="{{ form.username.id_for_label }}">Email</label>
+      {{ form.username }}
+      {{ form.username.errors }}
+    </div>
+    <div>
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      {{ form.password.errors }}
+    </div>
+    <button type="submit">Log in</button>
+  </form>
+{% endblock %}
