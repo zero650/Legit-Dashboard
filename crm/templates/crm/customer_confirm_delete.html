@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ object.full_name }} | CRM{% endblock %}
+
+{% block content %}
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">CRM</p>
+      <h1>Delete {{ object.full_name }}?</h1>
+      <p class="eyebrow">This will remove the customer profile and all attached customer documents.</p>
+    </div>
+  </section>
+
+  <form method="post" class="fields">
+    {% csrf_token %}
+    <p>This action cannot be undone.</p>
+    <div class="actions" style="margin:0">
+      <button type="submit">Delete customer</button>
+      <a class="button secondary" href="{{ object.get_absolute_url }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

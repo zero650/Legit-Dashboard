@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}CRM | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <style>
+    .crm-header {
+      align-items: end;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .crm-header-copy {
+      max-width: 720px;
+    }
+
+    .crm-metrics {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .crm-stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .crm-stat strong {
+      display: block;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 32px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .crm-search {
+      align-items: end;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      margin-bottom: 18px;
+    }
+
+    .customer-name {
+      font-weight: 800;
+    }
+
+    @media (max-width: 680px) {
+      .crm-search {
+        grid-template-columns: 1fr;
+      }
+
+      .crm-search .button,
+      .crm-search button {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <section class="crm-header">
+    <div class="crm-header-copy">
+      <p class="page-kicker">CRM</p>
+      <h1>Customers</h1>
+      <p class="eyebrow">Manage guest contact details, passport information, notes, and travel documents.</p>
+    </div>
+    <div class="actions" style="margin:0">
+      <a class="button secondary" href="{% url 'crm_customer_import' %}">Import CSV</a>
+      <a class="button sun" href="{% url 'crm_customer_create' %}">Add customer</a>
+    </div>
+  </section>
+
+  <section class="crm-metrics" aria-label="CRM metrics">
+    <div class="crm-stat">
+      <span class="metric-label">Customers</span>
+      <strong>{{ customer_count }}</strong>
+    </div>
+    <div class="crm-stat">
+      <span class="metric-label">Attached docs</span>
+      <strong>{{ document_count }}</strong>
+    </div>
+    <div class="crm-stat">
+      <span class="metric-label">Trip history</span>
+      <strong>{{ trip_history_count }}</strong>
+    </div>
+  </section>
+
+  <form method="get" class="panel soft crm-search">
+    <div>
+      <label for="customer-search">Search customers</label>
+      <input
+        id="customer-search"
+        type="search"
+        name="q"
+        value="{{ filters.q }}"
+        placeholder="Name, email, phone, city, state, postal, or passport"
+      >
+    </div>
+    <button type="submit">Search</button>
+    <a class="button secondary" href="{% url 'crm_customer_list' %}">Clear</a>
+  </form>
+
+  <section class="table-card">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">Customer directory</p>
+        <h2>All customers</h2>
+      </div>
+      <p class="table-intro">Fast access to contact details, passport status, trip count, spend, notes, and uploaded files.</p>
+    </div>
+    <table class="responsive-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Contact</th>
+          <th>Location</th>
+          <th>Passport</th>
+          <th>Trips</th>
+          <th>Spent</th>
+          <th>Docs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customer in customers %}
+          <tr>
+            <td data-label="Name">
+              <a class="customer-name" href="{{ customer.get_absolute_url }}">{{ customer.full_name }}</a>
+            </td>
+            <td data-label="Contact">
+              <a href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+              {% if customer.phone_number %}<br>{{ customer.phone_number }}{% endif %}
+            </td>
+            <td data-label="Location">
+              {{ customer.location|default:"-" }}
+            </td>
+            <td data-label="Passport">
+              {{ customer.passport_number|default:"-" }}
+              {% if customer.passport_expiration_date %}<br>Expires {{ customer.passport_expiration_date }}{% endif %}
+            </td>
+            <td data-label="Trips">{{ customer.trip_count }}</td>
+            <td data-label="Spent">${{ customer.total_money_spent|floatformat:2 }}</td>
+            <td data-label="Docs">{{ customer.documents.count }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="empty-state">No customers yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

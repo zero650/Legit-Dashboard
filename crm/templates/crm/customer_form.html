@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }} | CRM{% endblock %}
+
+{% block content %}
+  <style>
+    .crm-customer-form {
+      max-width: 980px;
+    }
+
+    .form-section {
+      display: grid;
+      gap: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-row.address-row {
+      grid-template-columns: minmax(220px, 2fr) minmax(160px, 1fr) minmax(90px, 0.65fr) minmax(110px, 0.8fr);
+    }
+
+    .form-field {
+      min-width: 0;
+    }
+
+    .form-field-wide {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 760px) {
+      .form-row,
+      .form-row.address-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">CRM</p>
+      <h1>{{ form_title }}</h1>
+      <p class="eyebrow">Store customer contact details, passport information, and staff notes.</p>
+    </div>
+  </section>
+
+  <form method="post" class="fields crm-customer-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <section class="form-section" aria-label="Customer details">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+          {{ form.first_name }}
+          {{ form.first_name.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+          {{ form.last_name }}
+          {{ form.last_name.errors }}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.phone_number.id_for_label }}">{{ form.phone_number.label }}</label>
+          {{ form.phone_number }}
+          {{ form.phone_number.errors }}
+        </div>
+      </div>
+
+      <div class="form-row address-row">
+        <div class="form-field">
+          <label for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
+          {{ form.address }}
+          {{ form.address.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.city.id_for_label }}">{{ form.city.label }}</label>
+          {{ form.city }}
+          {{ form.city.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.state.id_for_label }}">{{ form.state.label }}</label>
+          {{ form.state }}
+          {{ form.state.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.postal.id_for_label }}">{{ form.postal.label }}</label>
+          {{ form.postal }}
+          {{ form.postal.errors }}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="{{ form.passport_number.id_for_label }}">{{ form.passport_number.label }}</label>
+          {{ form.passport_number }}
+          {{ form.passport_number.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.passport_expiration_date.id_for_label }}">{{ form.passport_expiration_date.label }}</label>
+          {{ form.passport_expiration_date }}
+          {{ form.passport_expiration_date.errors }}
+        </div>
+      </div>
+
+      <div class="form-field form-field-wide">
+        <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+        {{ form.notes }}
+        {{ form.notes.errors }}
+      </div>
+    </section>
+
+    <div class="actions" style="margin:0">
+      <button type="submit">Save customer</button>
+      <a class="button secondary" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'crm_customer_list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

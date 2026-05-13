@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.full_name }} | CRM{% endblock %}
+
+{% block content %}
+  <style>
+    .customer-header {
+      align-items: end;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .customer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .customer-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.4fr);
+    }
+
+    .field-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field-list dt {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .field-list dd {
+      margin: 3px 0 0;
+    }
+
+    .document-upload {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .trip-history-form {
+      align-items: end;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(140px, 1fr)) minmax(120px, 0.8fr) auto;
+      margin-bottom: 18px;
+    }
+
+    .trip-summary {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .trip-stat {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 14px;
+    }
+
+    .trip-stat strong {
+      display: block;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 30px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .document-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .document-card {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .document-preview {
+      align-items: center;
+      aspect-ratio: 4 / 3;
+      background: var(--sun-soft);
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .document-preview img {
+      height: 100%;
+      object-fit: cover;
+      width: 100%;
+    }
+
+    .document-preview span {
+      color: var(--warn);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .document-meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .danger-link {
+      color: #9d2f1f;
+    }
+
+    @media (max-width: 760px) {
+      .customer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .customer-actions,
+      .customer-actions .button {
+        width: 100%;
+      }
+
+      .trip-history-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <section class="customer-header">
+    <div>
+      <p class="page-kicker">Customer profile</p>
+      <h1>{{ customer.full_name }}</h1>
+      <p class="eyebrow">{{ customer.email }}{% if customer.phone_number %} - {{ customer.phone_number }}{% endif %}</p>
+    </div>
+    <div class="customer-actions">
+      <a class="button secondary" href="{% url 'crm_customer_list' %}">Back to CRM</a>
+      <a class="button" href="{% url 'crm_customer_update' customer.pk %}">Edit customer</a>
+      <a class="button secondary danger-link" href="{% url 'crm_customer_delete' customer.pk %}">Delete customer</a>
+    </div>
+  </section>
+
+  <section class="customer-grid">
+    <div class="panel">
+      <p class="page-kicker">Details</p>
+      <h2>Customer info</h2>
+      <dl class="field-list">
+        <div>
+          <dt>Name</dt>
+          <dd>{{ customer.full_name }}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd><a href="mailto:{{ customer.email }}">{{ customer.email }}</a></dd>
+        </div>
+        <div>
+          <dt>Phone</dt>
+          <dd>{{ customer.phone_number|default:"-" }}</dd>
+        </div>
+        <div>
+          <dt>Address</dt>
+          <dd>
+            {{ customer.address|default:"-" }}
+            {% if customer.location %}<br>{{ customer.location }}{% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>Passport</dt>
+          <dd>
+            {{ customer.passport_number|default:"-" }}
+            {% if customer.passport_expiration_date %}<br>Expires {{ customer.passport_expiration_date }}{% endif %}
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="panel">
+      <p class="page-kicker">Notes</p>
+      <h2>Internal notes</h2>
+      <p>{{ customer.notes|linebreaksbr|default:"No notes yet." }}</p>
+    </div>
+  </section>
+
+  <section class="table-card" style="margin-top:18px">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">Trip history</p>
+        <h2>Trips with us</h2>
+      </div>
+      <p class="table-intro">Track each past customer trip and the money spent with Legit Trips.</p>
+    </div>
+
+    <div style="padding:0 24px 18px">
+      <section class="trip-summary" aria-label="Customer trip history totals">
+        <div class="trip-stat">
+          <span class="metric-label">Trip count</span>
+          <strong>{{ customer.trip_count }}</strong>
+        </div>
+        <div class="trip-stat">
+          <span class="metric-label">Money spent</span>
+          <strong>${{ customer.total_money_spent|floatformat:2 }}</strong>
+        </div>
+      </section>
+
+      <form
+        method="post"
+        action="{% url 'crm_customer_trip_history_create' customer.pk %}"
+        class="trip-history-form"
+      >
+        {% csrf_token %}
+        {{ trip_history_form.non_field_errors }}
+        <div>
+          <label for="{{ trip_history_form.trip_name.id_for_label }}">Trip name</label>
+          {{ trip_history_form.trip_name }}
+          {{ trip_history_form.trip_name.errors }}
+        </div>
+        <div>
+          <label for="{{ trip_history_form.trip_start_date.id_for_label }}">Start date</label>
+          {{ trip_history_form.trip_start_date }}
+          {{ trip_history_form.trip_start_date.errors }}
+        </div>
+        <div>
+          <label for="{{ trip_history_form.trip_end_date.id_for_label }}">End date</label>
+          {{ trip_history_form.trip_end_date }}
+          {{ trip_history_form.trip_end_date.errors }}
+        </div>
+        <div>
+          <label for="{{ trip_history_form.money_spent.id_for_label }}">Money spent</label>
+          {{ trip_history_form.money_spent }}
+          {{ trip_history_form.money_spent.errors }}
+        </div>
+        <button type="submit">Add trip</button>
+      </form>
+    </div>
+
+    <table class="responsive-table">
+      <thead>
+        <tr>
+          <th>Trip</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Money spent</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for trip_history in customer.trip_history.all %}
+          <tr>
+            <td data-label="Trip">{{ trip_history.trip_name }}</td>
+            <td data-label="Start">{{ trip_history.trip_start_date }}</td>
+            <td data-label="End">{{ trip_history.trip_end_date }}</td>
+            <td data-label="Money spent">${{ trip_history.money_spent|floatformat:2 }}</td>
+            <td data-label="Actions">
+              <form method="post" action="{% url 'crm_customer_trip_history_delete' customer.pk trip_history.pk %}">
+                {% csrf_token %}
+                <button class="button secondary danger-link" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty-state">No trip history yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel" style="margin-top:18px">
+    <div class="table-header" style="padding:0 0 18px">
+      <div>
+        <p class="page-kicker">Documents</p>
+        <h2>Attached files</h2>
+      </div>
+      <p class="table-intro">Upload passports, IDs, invoices, waivers, or other customer-specific PDFs and images.</p>
+    </div>
+
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      action="{% url 'crm_customer_document_create' customer.pk %}"
+      class="document-upload"
+    >
+      {% csrf_token %}
+      {{ document_form.non_field_errors }}
+      <div>
+        <label for="{{ document_form.title.id_for_label }}">Document title</label>
+        {{ document_form.title }}
+        {{ document_form.title.errors }}
+      </div>
+      <div>
+        <label for="{{ document_form.file.id_for_label }}">File</label>
+        {{ document_form.file }}
+        {{ document_form.file.errors }}
+        {% if document_form.file.help_text %}<small>{{ document_form.file.help_text }}</small>{% endif %}
+      </div>
+      <div>
+        <label for="{{ document_form.notes.id_for_label }}">Notes</label>
+        {{ document_form.notes }}
+        {{ document_form.notes.errors }}
+      </div>
+      <button type="submit">Attach document</button>
+    </form>
+
+    <div class="document-grid">
+      {% for document in customer.documents.all %}
+        <article class="document-card">
+          <a class="document-preview" href="{{ document.file.url }}" target="_blank" rel="noopener">
+            {% if document.is_image %}
+              <img src="{{ document.file.url }}" alt="{{ document.display_name }}">
+            {% else %}
+              <span>PDF</span>
+            {% endif %}
+          </a>
+          <div>
+            <strong><a href="{{ document.file.url }}" target="_blank" rel="noopener">{{ document.display_name }}</a></strong>
+            <div class="document-meta">Uploaded {{ document.uploaded_at }}</div>
+            {% if document.notes %}<p class="document-meta">{{ document.notes }}</p>{% endif %}
+          </div>
+          <form method="post" action="{% url 'crm_customer_document_delete' customer.pk document.pk %}">
+            {% csrf_token %}
+            <button class="button secondary danger-link" type="submit">Remove</button>
+          </form>
+        </article>
+      {% empty %}
+        <p class="empty-state">No documents attached yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

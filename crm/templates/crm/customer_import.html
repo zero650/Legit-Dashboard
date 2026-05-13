@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Import Customers | CRM{% endblock %}
+
+{% block content %}
+  <style>
+    .csv-columns {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin: 0;
+      padding: 0;
+    }
+
+    .csv-columns li {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      list-style: none;
+      padding: 10px 12px;
+    }
+  </style>
+
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">CRM</p>
+      <h1>Import customers</h1>
+      <p class="eyebrow">Upload a CSV to create new customers or update existing customers by matching email address.</p>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-bottom:18px">
+    <p class="page-kicker">CSV columns</p>
+    <h2>Accepted headers</h2>
+    <ul class="csv-columns">
+      <li>First_Name</li>
+      <li>Last_Name</li>
+      <li>Email</li>
+      <li>Phone Number</li>
+      <li>Address</li>
+      <li>City</li>
+      <li>Postal</li>
+      <li>State</li>
+      <li>Passport Number</li>
+      <li>Passport Expiration date</li>
+      <li>Notes</li>
+    </ul>
+    <p class="subtle" style="margin-top:14px">Use YYYY-MM-DD for passport expiration dates. First_Name, Last_Name, and Email are required.</p>
+  </section>
+
+  <form method="post" enctype="multipart/form-data" class="fields">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>
+      <label for="{{ form.csv_file.id_for_label }}">CSV file</label>
+      {{ form.csv_file }}
+      {{ form.csv_file.errors }}
+      {% if form.csv_file.help_text %}<small>{{ form.csv_file.help_text }}</small>{% endif %}
+    </div>
+    <div class="actions" style="margin:0">
+      <button type="submit">Import customers</button>
+      <a class="button secondary" href="{% url 'crm_customer_list' %}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

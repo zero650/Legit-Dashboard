@@ -1,8 +1,8 @@
 # Legit Dashboard
 
-Django + PostgreSQL dashboard for Legit Trips group travel operations.
+Django + PostgreSQL dashboard for Legit Trips group travel operations and customer management.
 
-The first module is Project Management for trips and trip tasks. A CRM app is scaffolded for the second module, but intentionally left empty until the CRM data model is ready.
+The app has two top-level work areas: trip/task operations and CRM.
 
 ## What is included
 
@@ -16,7 +16,7 @@ The first module is Project Management for trips and trip tasks. A CRM app is sc
 - Django Groups presented as Roles for permission levels
 - Permission matrix admin page for updating role permissions with checkboxes
 - Starter permission groups through a seed command
-- CRM app placeholder for the next phase
+- CRM for customer profiles, passport details, trip history, spend tracking, notes, and attached PDFs/images
 
 ## Project Management Models
 
@@ -26,6 +26,12 @@ The first module is Project Management for trips and trip tasks. A CRM app is sc
 - `Employee`: profile for a Django user
 - `Group`: Django's built-in permission group, shown as Roles in the Authentication admin section
 - `TripStatus`: editable list of trip lifecycle statuses
+
+## CRM Models
+
+- `Customer`: first name, last name, email, phone number, address, city, state, postal code, passport number, passport expiration date, and notes
+- `CustomerTripHistory`: customer-linked trip name, trip start date, trip end date, and money spent
+- `CustomerDocument`: customer-linked PDF/image attachments with optional titles and notes
 
 ## Permissions Approach
 
@@ -66,6 +72,8 @@ On startup, the web container waits for PostgreSQL, runs migrations, seeds the d
 PostgreSQL is only exposed inside the Docker network by default, so it will not conflict with another local Postgres running on your Mac.
 
 Task templates can be managed at `/task-templates/`. Open a trip and use **Apply task templates** to create that trip's own task records with calculated due dates. Negative day offsets are before the trip starts; positive offsets are after the trip starts.
+
+Customer records can be managed at `/crm/`. Open a customer profile to track trip history and money spent, or attach PDFs and images such as passport scans, IDs, waivers, invoices, or other travel documents. Use `/crm/customers/import/` to import customers from CSV; first name, last name, and email are required, and existing customers are updated by matching email address.
 
 Useful Docker commands:
 

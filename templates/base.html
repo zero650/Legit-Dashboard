@@ -487,17 +487,19 @@
 </head>
 <body>
   <header>
-    <div class="announcement">Hand-crafted trip operations for the Legit Trips team</div>
+    <div class="announcement">Trip operations and customer care for the Legit Trips team</div>
     <nav class="nav">
       <a class="brand" href="{% url 'trip_dashboard' %}">
         <span class="brand-mark">Legit Trips</span>
-        <span class="brand-name">Operations Dashboard</span>
+        <span class="brand-name">Legit Dashboard</span>
       </a>
       {% if user.is_authenticated %}
         <div class="nav-links">
-          <a href="{% url 'trip_list' %}">Trips</a>
+          <a href="{% url 'trip_dashboard' %}">Dashboard</a>
           <a href="{% url 'task_list' %}">Tasks</a>
+          <a href="{% url 'trip_list' %}">Trips</a>
           <a href="{% url 'task_template_list' %}">Task Templates</a>
+          <a href="{% url 'crm_customer_list' %}">CRM</a>
           <a href="{% url 'admin:index' %}">Admin</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline">
             {% csrf_token %}
