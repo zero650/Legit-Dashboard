@@ -135,6 +135,12 @@ class TaskTemplateForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
             "default_notes": forms.Textarea(attrs={"rows": 5}),
         }
+        labels = {
+            "days_to_before_trip": "Days from trip start",
+        }
+        help_texts = {
+            "days_to_before_trip": "Use a negative number for before the trip and a positive number for after. Example: -365 means 365 days before.",
+        }
 
 
 class TaskTemplatePackForm(forms.ModelForm):

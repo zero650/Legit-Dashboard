@@ -301,6 +301,33 @@ class TripCreateAndTaskTemplateViewTests(TestCase):
         self.assertTrue(trip.tasks.filter(source_template=included).exists())
         self.assertFalse(trip.tasks.filter(source_template=excluded).exists())
 
+    def test_add_task_pack_preserves_negative_day_offsets_in_due_dates(self):
+        self.client.force_login(self.user)
+        trip = Trip.objects.create(
+            name="June 2026 Website Trip",
+            start_date=date(2026, 6, 12),
+            end_date=date(2026, 6, 19),
+            trip_manager=self.employee,
+            created_by=self.employee,
+            status=self.status,
+        )
+        template = TaskTemplate.objects.create(
+            name="Trip Page for Website",
+            days_to_before_trip=-365,
+        )
+        pack = TaskTemplatePack.objects.create(name="Website Launch")
+        pack.task_templates.add(template)
+
+        response = self.client.post(
+            reverse("trip_apply_task_templates", args=[trip.pk]),
+            {"task_template_pack": pack.pk},
+        )
+
+        task = trip.tasks.get(source_template=template)
+        self.assertRedirects(response, trip.get_absolute_url())
+        self.assertEqual(task.days_to_before_trip, -365)
+        self.assertEqual(task.due_date, date(2025, 6, 12))
+
 
 class TripDashboardTests(TestCase):
     def setUp(self):

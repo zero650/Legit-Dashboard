@@ -132,7 +132,7 @@
             <button class="drag-handle" type="button" aria-label="Drag to reorder">&#9776;</button>
           </td>
           <td><a href="{% url 'task_template_update' template.pk %}">{{ template.name }}</a></td>
-          <td>{{ template.days_to_before_trip|default:"No default" }}</td>
+          <td>{{ template.day_offset_display }}</td>
           <td><span class="status">{{ template.is_active|yesno:"Active,Inactive" }}</span></td>
           <td>
             <div class="template-actions">

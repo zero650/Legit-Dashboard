@@ -165,6 +165,16 @@ class TaskTemplate(TimeStampedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def day_offset_display(self):
+        if self.days_to_before_trip is None:
+            return "No default"
+        if self.days_to_before_trip == 0:
+            return "Trip start"
+        if self.days_to_before_trip < 0:
+            return f"{abs(self.days_to_before_trip)} days before"
+        return f"{self.days_to_before_trip} days after"
+
     def build_task(self, trip):
         due_date = None
         if self.days_to_before_trip is not None:
