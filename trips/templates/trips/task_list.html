@@ -11,10 +11,6 @@
       align-items: end;
     }
 
-    .filter-shell {
-      margin-bottom: 18px;
-    }
-
     .filter-toggle {
       align-items: center;
       display: inline-flex;
@@ -68,6 +64,11 @@
       pointer-events: none;
     }
 
+    .task-list-shell {
+      display: grid;
+      gap: 18px;
+    }
+
     @media (max-width: 680px) {
       .task-quick-edit-form {
         align-items: stretch;
@@ -82,11 +83,16 @@
       }
     }
   </style>
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">Ops detail</p>
+      <h1>Keep the moving pieces beautifully visible.</h1>
+      <p class="eyebrow">Filter, review, and update the work behind every departure with a calmer, more brand-aligned tasks view.</p>
+    </div>
+  </section>
 
-  <h1>Tasks</h1>
-  <p class="eyebrow">Filter, review, and update trip tasks across the whole operation.</p>
-
-  <section class="panel filter-shell">
+  <section class="task-list-shell">
+  <section class="panel soft">
     <button
       class="button secondary filter-toggle"
       type="button"
@@ -135,56 +141,66 @@
     </form>
   </section>
 
-  <table class="responsive-table">
-    <thead>
-      <tr>
-        <th>Task</th>
-        <th>Trip</th>
-        <th>Assigned to / Status / Due</th>
-        <th>Due in</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for task in tasks %}
+  <section class="table-card">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">Task board</p>
+        <h2>All tasks</h2>
+      </div>
+      <p class="table-intro">Fast inline updates for assignee, status, and due date, wrapped in a presentation that feels less like a back office spreadsheet.</p>
+    </div>
+    <table class="responsive-table">
+      <thead>
         <tr>
-          <td data-label="Task">{{ task.name }}</td>
-          <td data-label="Trip"><a href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a></td>
-          <td data-label="Assigned to / Status / Due">
-            <form method="post" action="{% url 'task_quick_update' task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'task_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
-              <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
-                <option value="">Unassigned</option>
-                {% for employee in employees %}
-                  <option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>
-                    {{ employee }}
-                  </option>
-                {% endfor %}
-              </select>
-              <select name="status" aria-label="Status for {{ task.name }}" class="status-select">
-                {% for status_value, status_label in task_status_choices %}
-                  <option value="{{ status_value }}"{% if task.status == status_value %} selected{% endif %}>
-                    {{ status_label }}
-                  </option>
-                {% endfor %}
-              </select>
-              <input
-                type="date"
-                name="due_date"
-                aria-label="Due date for {{ task.name }}"
-                value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
-              >
-            </form>
-          </td>
-          <td data-label="Due in">{{ task.due_in_display }}</td>
-          <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
+          <th>Task</th>
+          <th>Trip</th>
+          <th>Assigned to / Status / Due</th>
+          <th>Due in</th>
+          <th></th>
         </tr>
-      {% empty %}
-        <tr><td colspan="5">No tasks match those filters.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+          <tr>
+            <td data-label="Task">{{ task.name }}</td>
+            <td data-label="Trip"><a href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a></td>
+            <td data-label="Assigned to / Status / Due">
+              <form method="post" action="{% url 'task_quick_update' task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'task_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
+                <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
+                  <option value="">Unassigned</option>
+                  {% for employee in employees %}
+                    <option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>
+                      {{ employee }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <select name="status" aria-label="Status for {{ task.name }}" class="status-select">
+                  {% for status_value, status_label in task_status_choices %}
+                    <option value="{{ status_value }}"{% if task.status == status_value %} selected{% endif %}>
+                      {{ status_label }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <input
+                  type="date"
+                  name="due_date"
+                  aria-label="Due date for {{ task.name }}"
+                  value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
+                >
+              </form>
+            </td>
+            <td data-label="Due in">{{ task.due_in_display }}</td>
+            <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty-state">No tasks match those filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  </section>
 
   <script>
     document.querySelectorAll("[data-filter-toggle]").forEach((button) => {

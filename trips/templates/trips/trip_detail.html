@@ -24,9 +24,9 @@
 
     .trip-toolbar {
       align-items: center;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.56);
+      border: 1px solid rgba(92, 78, 63, 0.1);
+      border-radius: 20px;
       display: flex;
       flex: 0 1 auto;
       gap: 10px;
@@ -176,32 +176,36 @@
       }
     }
   </style>
-  <section class="trip-header">
-    <div class="trip-header-copy">
-      <h1>{{ trip.name }}</h1>
-      <p class="eyebrow">{{ trip.start_date }} - {{ trip.end_date }}</p>
-    </div>
-    <div class="trip-toolbar">
-      <a class="button secondary trip-toolbar-link" href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>
-      <form method="post" action="{% url 'trip_apply_task_templates' trip.pk %}">
-        {% csrf_token %}
-        {% if task_template_packs %}
-          <select name="task_template_pack" aria-label="Task template pack">
-            {% for pack in task_template_packs %}
-              <option value="{{ pack.pk }}">{{ pack.name }} ({{ pack.active_template_count }})</option>
-            {% endfor %}
-          </select>
-        {% endif %}
-        <button class="button trip-toolbar-submit" type="submit">
-          {% if task_template_packs %}Add task pack{% else %}Add all tasks{% endif %}
-        </button>
-      </form>
-      <a class="button secondary trip-toolbar-link" href="{% url 'trip_update' trip.pk %}">Full edit</a>
-    </div>
+  <section class="hero-shell">
+    <section class="trip-header">
+      <div class="trip-header-copy hero-copy">
+        <p class="page-kicker">Trip detail</p>
+        <h1>{{ trip.name }}</h1>
+        <p class="eyebrow">{{ trip.start_date }} - {{ trip.end_date }}</p>
+      </div>
+      <div class="trip-toolbar">
+        <a class="button secondary trip-toolbar-link" href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>
+        <form method="post" action="{% url 'trip_apply_task_templates' trip.pk %}">
+          {% csrf_token %}
+          {% if task_template_packs %}
+            <select name="task_template_pack" aria-label="Task template pack">
+              {% for pack in task_template_packs %}
+                <option value="{{ pack.pk }}">{{ pack.name }} ({{ pack.active_template_count }})</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+          <button class="button trip-toolbar-submit" type="submit">
+            {% if task_template_packs %}Add task pack{% else %}Add all tasks{% endif %}
+          </button>
+        </form>
+        <a class="button secondary trip-toolbar-link" href="{% url 'trip_update' trip.pk %}">Full edit</a>
+      </div>
+    </section>
   </section>
 
   <section class="trip-summary-grid">
     <div class="panel">
+      <p class="page-kicker">Core settings</p>
       <h2>Details</h2>
       <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
         {% csrf_token %}
@@ -244,6 +248,7 @@
       </form>
     </div>
     <div class="panel">
+      <p class="page-kicker">Working notes</p>
       <h2>Notes</h2>
       <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-notes-form" data-preserve-scroll="true">
         {% csrf_token %}
@@ -261,14 +266,20 @@
     </div>
   </section>
 
-  <section class="panel" style="margin-top:18px">
-    <h2>Tasks</h2>
+  <section class="table-card" style="margin-top:18px">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">Execution plan</p>
+        <h2>Tasks</h2>
+      </div>
+      <p class="table-intro">Bulk-update or fine-tune the workstream for this trip without leaving the page.</p>
+    </div>
     <form
       id="bulk-task-status-form"
       method="post"
       action="{% url 'trip_bulk_task_status_update' trip.pk %}"
       class="actions"
-      style="margin-bottom: 12px;"
+      style="margin: 0 24px 12px;"
     >
       {% csrf_token %}
       <select name="status" aria-label="Bulk task status">
@@ -332,7 +343,7 @@
             <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">No tasks linked to this trip yet.</td></tr>
+          <tr><td colspan="5" class="empty-state">No tasks linked to this trip yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

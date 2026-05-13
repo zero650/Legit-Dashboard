@@ -3,17 +3,40 @@
 {% block title %}Trip Dashboard | Legit Dashboard{% endblock %}
 
 {% block content %}
-  <h1>Trip Operations</h1>
-  <p class="eyebrow">Track trips, responsibilities, due dates, and open work.</p>
-
-  <section class="grid" aria-label="Dashboard metrics">
-    <div class="panel metric"><strong>{{ trip_count }}</strong>Total trips</div>
-    <div class="panel metric"><strong>{{ open_task_count }}</strong>Open tasks</div>
-    <div class="panel metric"><strong>{{ running_trip_count }}</strong>Currently running trips</div>
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">Daily operations</p>
+      <h1>Trip operations with a little more wanderlust.</h1>
+      <p class="eyebrow">Track departures, responsibilities, due dates, and open work in a dashboard that feels closer to the Legit Trips brand.</p>
+    </div>
   </section>
 
-  <section class="panel">
-    <h2>Upcoming trips</h2>
+  <section class="grid" aria-label="Dashboard metrics">
+    <div class="panel metric">
+      <span class="metric-label">Trips in motion</span>
+      <strong>{{ trip_count }}</strong>
+      <span class="metric-note">Every itinerary, launch, and departure organized in one place.</span>
+    </div>
+    <div class="panel metric">
+      <span class="metric-label">Open tasks</span>
+      <strong>{{ open_task_count }}</strong>
+      <span class="metric-note">Outstanding operational details still needing attention.</span>
+    </div>
+    <div class="panel metric">
+      <span class="metric-label">Currently traveling</span>
+      <strong>{{ running_trip_count }}</strong>
+      <span class="metric-note">Trips that are active right now and need a close eye.</span>
+    </div>
+  </section>
+
+  <section class="table-card">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">Departure board</p>
+        <h2>Upcoming trips</h2>
+      </div>
+      <p class="table-intro">A clear read on what is launching next, who is running it, and where the remaining work is hiding.</p>
+    </div>
     <table class="responsive-table">
       <thead>
         <tr>
@@ -34,14 +57,20 @@
             <td data-label="Open tasks">{{ trip.open_tasks }}<br><a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a></td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">No trips yet.</td></tr>
+          <tr><td colspan="5" class="empty-state">No trips yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </section>
 
-  <section class="panel" style="margin-top:18px">
-    <h2>Open tasks</h2>
+  <section class="table-card" style="margin-top:18px">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">Open loops</p>
+        <h2>Open tasks</h2>
+      </div>
+      <p class="table-intro">Cross-team follow-through that still needs to be assigned, updated, or wrapped before a trip goes out smoothly.</p>
+    </div>
     <table class="responsive-table">
       <thead>
         <tr>
@@ -62,7 +91,7 @@
             <td data-label="Due">{{ task.due_date|default:"No due date" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">No open tasks.</td></tr>
+          <tr><td colspan="5" class="empty-state">No open tasks.</td></tr>
         {% endfor %}
       </tbody>
     </table>

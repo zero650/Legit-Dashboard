@@ -3,8 +3,13 @@
 {% block title %}Form | Legit Dashboard{% endblock %}
 
 {% block content %}
-  <h1>{{ form_title }}</h1>
-  <p class="eyebrow">Required fields are enforced by the form.</p>
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">Trip operations</p>
+      <h1>{{ form_title }}</h1>
+      <p class="eyebrow">Required fields are enforced by the form, with a softer presentation that matches the rest of the dashboard.</p>
+    </div>
+  </section>
 
   <form method="post" class="fields">
     {% csrf_token %}

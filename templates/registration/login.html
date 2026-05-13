@@ -3,8 +3,13 @@
 {% block title %}Log in | Legit Dashboard{% endblock %}
 
 {% block content %}
-  <h1>Staff Login</h1>
-  <p class="eyebrow">Sign in to manage Legit Trips operations.</p>
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">Welcome back</p>
+      <h1>Staff login</h1>
+      <p class="eyebrow">Sign in to manage Legit Trips operations from a dashboard that feels much closer to the public-facing brand.</p>
+    </div>
+  </section>
 
   <form method="post" class="fields">
     {% csrf_token %}
