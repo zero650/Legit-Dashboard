@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
+from django.utils import timezone
 
 
 class TimeStampedModel(models.Model):
@@ -128,10 +129,11 @@ class Trip(TimeStampedModel):
     def open_tasks_count(self):
         return self.tasks.exclude(status=Task.Status.DONE).count()
 
-    def apply_task_templates(self, assigned_to=None, status=None):
+    def apply_task_templates(self, assigned_to=None, status=None, templates=None):
+        template_queryset = templates or TaskTemplate.objects.filter(is_active=True)
         tasks = [
             template.build_task(self)
-            for template in TaskTemplate.objects.filter(is_active=True)
+            for template in template_queryset
             if not self.tasks.filter(source_template=template).exists()
         ]
         for task in tasks:
@@ -176,6 +178,28 @@ class TaskTemplate(TimeStampedModel):
             due_date=due_date,
             source_template=self,
         )
+
+
+class TaskTemplatePack(TimeStampedModel):
+    name = models.CharField(max_length=180, unique=True)
+    description = models.TextField(blank=True)
+    task_templates = models.ManyToManyField(
+        TaskTemplate,
+        blank=True,
+        related_name="packs",
+    )
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def active_template_count(self):
+        return self.task_templates.filter(is_active=True).count()
 
 
 class Task(TimeStampedModel):
@@ -237,3 +261,22 @@ class Task(TimeStampedModel):
 
     def _days_delta(self):
         return timedelta(days=self.days_to_before_trip)
+
+    @property
+    def due_in_days(self):
+        if not self.due_date:
+            return None
+        return (self.due_date - timezone.localdate()).days
+
+    @property
+    def due_in_display(self):
+        if self.status == self.Status.DONE:
+            return "Done"
+        due_in_days = self.due_in_days
+        if due_in_days is None:
+            return "-"
+        if due_in_days == 0:
+            return "Today"
+        if due_in_days < 0:
+            return f"Overdue by {abs(due_in_days)} days"
+        return f"In {due_in_days} days"

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -7,9 +7,10 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .forms import TripForm
-from .models import Employee, Task, TaskTemplate, Trip, TripStatus
+from .models import Employee, Task, TaskTemplate, TaskTemplatePack, Trip, TripStatus
 
 
 class TripModelTests(TestCase):
@@ -69,6 +70,24 @@ class TripModelTests(TestCase):
         )
 
         self.assertEqual(task.due_date, date(2026, 7, 11))
+
+    def test_due_in_display_shows_done_for_completed_tasks(self):
+        trip = Trip.objects.create(
+            name="Costa Rica 2026",
+            start_date=date(2026, 7, 10),
+            end_date=date(2026, 7, 17),
+            trip_manager=self.employee,
+            status=self.status,
+        )
+
+        task = Task.objects.create(
+            name="Request Reviews",
+            trip=trip,
+            due_date=date(2026, 1, 1),
+            status=Task.Status.DONE,
+        )
+
+        self.assertEqual(task.due_in_display, "Done")
 
     def test_trip_can_apply_task_templates_once(self):
         trip = Trip.objects.create(
@@ -251,6 +270,338 @@ class TripCreateAndTaskTemplateViewTests(TestCase):
         self.assertEqual(task.assigned_to, self.employee)
         self.assertEqual(task.status, Task.Status.IN_PROGRESS)
 
+    def test_add_task_pack_adds_only_templates_in_selected_pack(self):
+        self.client.force_login(self.user)
+        trip = Trip.objects.create(
+            name="Costa Rica 2026",
+            start_date=date(2026, 7, 10),
+            end_date=date(2026, 7, 17),
+            trip_manager=self.employee,
+            created_by=self.employee,
+            status=self.status,
+        )
+        included = TaskTemplate.objects.create(
+            name="Included Template",
+            days_to_before_trip=-30,
+        )
+        excluded = TaskTemplate.objects.create(
+            name="Excluded Template",
+            days_to_before_trip=-20,
+        )
+        pack = TaskTemplatePack.objects.create(name="Website Trips")
+        pack.task_templates.add(included)
+
+        response = self.client.post(
+            reverse("trip_apply_task_templates", args=[trip.pk]),
+            {"task_template_pack": pack.pk},
+        )
+
+        self.assertRedirects(response, trip.get_absolute_url())
+        self.assertTrue(trip.tasks.filter(source_template=included).exists())
+        self.assertFalse(trip.tasks.filter(source_template=excluded).exists())
+
+
+class TripDashboardTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="dashboard@example.com",
+            password="password",
+        )
+        self.employee = Employee.objects.create(user=self.user)
+        staff_role, _ = Group.objects.get_or_create(name="Staff")
+        self.employee.roles.add(staff_role)
+        self.status = TripStatus.objects.create(name="Planning")
+
+    def test_dashboard_shows_running_trip_count_and_add_task_links(self):
+        today = timezone.localdate()
+        running_status = TripStatus.objects.create(name="On Sale", is_active=True)
+        completed_status = TripStatus.objects.create(name="Completed", is_active=True)
+        running_trip = Trip.objects.create(
+            name="Running Trip",
+            start_date=today,
+            end_date=today,
+            trip_manager=self.employee,
+            status=running_status,
+        )
+        Trip.objects.create(
+            name="Completed Trip",
+            start_date=today,
+            end_date=today,
+            trip_manager=self.employee,
+            status=completed_status,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+
+        self.assertContains(response, "Currently running trips")
+        self.assertEqual(response.context["running_trip_count"], 1)
+        self.assertContains(response, f'{reverse("task_create")}?trip={running_trip.pk}')
+        self.assertNotContains(response, "Active task templates")
+        self.assertNotContains(response, "Create task")
+
+
+class TripListQuickUpdateTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="triplist@example.com",
+            password="password",
+            is_staff=True,
+        )
+        self.user.user_permissions.add(
+            *Permission.objects.filter(codename__in=["change_trip"])
+        )
+        self.staff_role, _ = Group.objects.get_or_create(name="Staff")
+        self.admin_role, _ = Group.objects.get_or_create(name="Administrator")
+        self.host_role, _ = Group.objects.get_or_create(name="Host")
+
+        self.manager_user = get_user_model().objects.create_user(email="manager1@example.com")
+        self.manager_employee = Employee.objects.create(user=self.manager_user)
+        self.manager_employee.roles.add(self.staff_role)
+
+        self.second_manager_user = get_user_model().objects.create_user(email="manager2@example.com")
+        self.second_manager_employee = Employee.objects.create(user=self.second_manager_user)
+        self.second_manager_employee.roles.add(self.admin_role)
+
+        self.host_user = get_user_model().objects.create_user(email="host1@example.com")
+        self.host_employee = Employee.objects.create(user=self.host_user)
+        self.host_employee.roles.add(self.host_role)
+
+        self.second_host_user = get_user_model().objects.create_user(email="host2@example.com")
+        self.second_host_employee = Employee.objects.create(user=self.second_host_user)
+        self.second_host_employee.roles.add(self.host_role)
+
+        self.status = TripStatus.objects.create(name="Planning")
+        self.second_status = TripStatus.objects.create(name="On Sale", is_active=True)
+        self.trip = Trip.objects.create(
+            name="Japan 2026",
+            start_date=date(2026, 9, 10),
+            end_date=date(2026, 9, 17),
+            trip_manager=self.manager_employee,
+            trip_leader=self.host_employee,
+            status=self.status,
+        )
+        self.other_trip = Trip.objects.create(
+            name="Italy Dolomites",
+            start_date=date(2026, 6, 12),
+            end_date=date(2026, 6, 19),
+            trip_manager=self.second_manager_employee,
+            trip_leader=self.second_host_employee,
+            status=self.second_status,
+        )
+
+    def test_trip_list_shows_inline_manager_and_leader_dropdowns(self):
+        self.client.force_login(self.user)
+        Task.objects.create(
+            name="Open task",
+            trip=self.trip,
+            assigned_to=self.manager_employee,
+            status=Task.Status.NOT_STARTED,
+        )
+        Task.objects.create(
+            name="Closed task",
+            trip=self.trip,
+            assigned_to=self.manager_employee,
+            status=Task.Status.DONE,
+        )
+
+        response = self.client.get(reverse("trip_list"))
+
+        self.assertContains(response, reverse("trip_quick_update", args=[self.trip.pk]))
+        self.assertContains(response, 'name="trip_leader"')
+        self.assertContains(response, 'name="trip_manager"')
+        self.assertContains(response, 'name="status"')
+        self.assertContains(response, 'name="q"')
+        self.assertContains(response, "Apply filters")
+        self.assertContains(response, "Open Tasks")
+        self.assertContains(response, ">1<", html=False)
+        self.assertNotContains(response, "Trip ID")
+        self.assertContains(response, self.second_manager_employee.email)
+        self.assertContains(response, self.second_host_employee.email)
+        self.assertContains(response, self.second_status.name)
+
+    def test_trip_list_filters_and_search(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("trip_list"),
+            {
+                "q": "Italy",
+                "status": self.second_status.pk,
+                "trip_manager": self.second_manager_employee.pk,
+                "trip_leader": self.second_host_employee.pk,
+            },
+        )
+
+        self.assertContains(response, self.other_trip.name)
+        self.assertNotContains(response, self.trip.name)
+
+    def test_trip_list_quick_update_redirect_preserves_filters(self):
+        self.client.force_login(self.user)
+        next_url = (
+            f"{reverse('trip_list')}?q=Japan&status={self.status.pk}"
+            f"&trip_manager={self.manager_employee.pk}&trip_leader={self.host_employee.pk}"
+        )
+
+        response = self.client.post(
+            reverse("trip_quick_update", args=[self.trip.pk]),
+            {
+                "trip_leader": self.second_host_employee.pk,
+                "trip_manager": self.manager_employee.pk,
+                "status": self.status.pk,
+                "next": next_url,
+            },
+        )
+
+        self.assertRedirects(response, next_url)
+
+    def test_trip_list_can_quick_update_leader_without_overwriting_manager(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("trip_quick_update", args=[self.trip.pk]),
+            {
+                "trip_leader": self.second_host_employee.pk,
+                "trip_manager": self.manager_employee.pk,
+                "status": self.status.pk,
+                "next": reverse("trip_list"),
+            },
+        )
+
+        self.assertRedirects(response, reverse("trip_list"))
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.trip_leader, self.second_host_employee)
+        self.assertEqual(self.trip.trip_manager, self.manager_employee)
+
+    def test_trip_list_can_quick_update_manager_without_overwriting_leader(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("trip_quick_update", args=[self.trip.pk]),
+            {
+                "trip_leader": self.host_employee.pk,
+                "trip_manager": self.second_manager_employee.pk,
+                "status": self.status.pk,
+                "next": reverse("trip_list"),
+            },
+        )
+
+        self.assertRedirects(response, reverse("trip_list"))
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.trip_manager, self.second_manager_employee)
+        self.assertEqual(self.trip.trip_leader, self.host_employee)
+
+    def test_trip_list_can_quick_update_status_without_overwriting_leader_or_manager(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("trip_quick_update", args=[self.trip.pk]),
+            {
+                "trip_leader": self.host_employee.pk,
+                "trip_manager": self.manager_employee.pk,
+                "status": self.second_status.pk,
+                "next": reverse("trip_list"),
+            },
+        )
+
+        self.assertRedirects(response, reverse("trip_list"))
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.status, self.second_status)
+        self.assertEqual(self.trip.trip_manager, self.manager_employee)
+        self.assertEqual(self.trip.trip_leader, self.host_employee)
+
+
+class TaskDashboardTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="taskdash@example.com",
+            password="password",
+            is_staff=True,
+        )
+        self.user.user_permissions.add(
+            *Permission.objects.filter(codename__in=["change_task"])
+        )
+        self.employee = Employee.objects.create(user=self.user)
+        staff_role, _ = Group.objects.get_or_create(name="Staff")
+        self.employee.roles.add(staff_role)
+        self.second_user = get_user_model().objects.create_user(
+            email="othertask@example.com",
+            password="password",
+        )
+        self.second_employee = Employee.objects.create(user=self.second_user)
+        self.second_employee.roles.add(staff_role)
+        self.status = TripStatus.objects.create(name="Planning")
+        self.trip = Trip.objects.create(
+            name="Italy 2026",
+            start_date=date(2026, 8, 10),
+            end_date=date(2026, 8, 17),
+            trip_manager=self.employee,
+            status=self.status,
+        )
+        self.first_task = Task.objects.create(
+            name="Send rooming reminder",
+            trip=self.trip,
+            assigned_to=self.employee,
+            status=Task.Status.NOT_STARTED,
+            due_date=date(2026, 7, 1),
+        )
+        self.second_task = Task.objects.create(
+            name="Confirm host call",
+            trip=self.trip,
+            assigned_to=self.second_employee,
+            status=Task.Status.DONE,
+            due_date=date(2026, 7, 15),
+        )
+
+    def test_task_dashboard_shows_filters_and_inline_edit_controls(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("task_list"))
+
+        self.assertContains(response, "Assigned to")
+        self.assertContains(response, "Due date from")
+        self.assertContains(response, reverse("task_quick_update", args=[self.first_task.pk]))
+        self.assertContains(response, self.trip.name)
+
+    def test_task_dashboard_filters_by_assignee_status_and_due_date(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("task_list"),
+            {
+                "assigned_to": self.second_employee.pk,
+                "status": Task.Status.DONE,
+                "due_date_from": "2026-07-10",
+                "due_date_to": "2026-07-20",
+            },
+        )
+
+        self.assertContains(response, self.second_task.name)
+        self.assertNotContains(response, self.first_task.name)
+
+    def test_task_dashboard_can_quick_update_task_and_return_to_filtered_page(self):
+        self.client.force_login(self.user)
+        self.first_task.days_to_before_trip = -30
+        self.first_task.save()
+        next_url = f"{reverse('task_list')}?status={Task.Status.NOT_STARTED}"
+
+        response = self.client.post(
+            reverse("task_quick_update", args=[self.first_task.pk]),
+            {
+                "assigned_to": self.second_employee.pk,
+                "status": Task.Status.IN_PROGRESS,
+                "due_date": "2026-07-20",
+                "next": next_url,
+            },
+        )
+
+        self.assertRedirects(response, next_url)
+        self.first_task.refresh_from_db()
+        self.assertEqual(self.first_task.assigned_to, self.second_employee)
+        self.assertEqual(self.first_task.status, Task.Status.IN_PROGRESS)
+        self.assertEqual(self.first_task.due_date, date(2026, 7, 20))
+        self.assertIsNone(self.first_task.days_to_before_trip)
+
 
 class TaskCreateViewTests(TestCase):
     def setUp(self):
@@ -289,7 +640,7 @@ class TaskCreateViewTests(TestCase):
 
         self.assertContains(response, "Task template")
         self.assertContains(response, self.template.name)
-        self.assertNotContains(response, 'name="name"')
+        self.assertContains(response, 'name="name"')
 
     def test_create_task_from_template_sets_name_notes_and_due_date(self):
         self.client.force_login(self.user)
@@ -314,6 +665,139 @@ class TaskCreateViewTests(TestCase):
         self.assertEqual(task.days_to_before_trip, -30)
         self.assertEqual(task.due_date, date(2026, 6, 10))
 
+    def test_create_one_off_task_without_template(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("task_create"),
+            {
+                "name": "Custom airport handoff",
+                "source_template": "",
+                "trip": self.trip.pk,
+                "assigned_to": self.employee.pk,
+                "status": Task.Status.IN_PROGRESS,
+                "due_date": "2026-07-01",
+                "days_to_before_trip": "",
+                "notes": "Coordinate directly with the hotel.",
+            },
+        )
+
+        task = Task.objects.get(name="Custom airport handoff")
+        self.assertRedirects(response, self.trip.get_absolute_url())
+        self.assertIsNone(task.source_template)
+        self.assertEqual(task.notes, "Coordinate directly with the hotel.")
+
+
+class TripDetailTaskManagementTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="tripdetail@example.com",
+            password="password",
+            is_staff=True,
+        )
+        self.user.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["view_trip", "change_task", "add_task"]
+            )
+        )
+        self.employee = Employee.objects.create(user=self.user)
+        staff_role, _ = Group.objects.get_or_create(name="Staff")
+        self.employee.roles.add(staff_role)
+        self.second_user = get_user_model().objects.create_user(
+            email="assignee@example.com",
+            password="password",
+        )
+        self.second_employee = Employee.objects.create(user=self.second_user)
+        self.second_employee.roles.add(staff_role)
+        self.status = TripStatus.objects.create(name="Planning")
+        self.trip = Trip.objects.create(
+            name="Peru 2026",
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate(),
+            trip_manager=self.employee,
+            status=self.status,
+        )
+        self.first_task = Task.objects.create(
+            name="First task",
+            trip=self.trip,
+            assigned_to=self.employee,
+            status=Task.Status.NOT_STARTED,
+            due_date=timezone.localdate(),
+        )
+        self.second_task = Task.objects.create(
+            name="Second task",
+            trip=self.trip,
+            assigned_to=self.employee,
+            status=Task.Status.NOT_STARTED,
+            due_date=timezone.localdate() + timedelta(days=3),
+        )
+
+    def test_trip_detail_shows_inline_task_management_controls(self):
+        self.client.force_login(self.user)
+        host_role, _ = Group.objects.get_or_create(name="Host")
+        host_user = get_user_model().objects.create_user(email="triphost@example.com")
+        host_employee = Employee.objects.create(user=host_user)
+        host_employee.roles.add(host_role)
+        self.trip.trip_leader = host_employee
+        self.trip.save()
+
+        response = self.client.get(reverse("trip_detail", args=[self.trip.pk]))
+
+        self.assertContains(response, "Add all tasks")
+        self.assertContains(response, "Full edit")
+        self.assertContains(response, 'name="trip_manager"')
+        self.assertContains(response, 'name="trip_leader"')
+        self.assertContains(response, 'name="status"')
+        self.assertContains(response, 'name="notes"')
+        self.assertContains(
+            response,
+            reverse("trip_task_status_update", args=[self.trip.pk, self.first_task.pk]),
+        )
+        self.assertContains(response, 'name="assigned_to"')
+        self.assertContains(response, 'name="due_date"')
+        self.assertContains(response, "Today")
+        self.assertContains(response, "In 3 days")
+        self.assertNotContains(response, "Days before trip")
+        self.assertNotContains(response, "Created by")
+
+    def test_trip_detail_can_update_single_task_fields(self):
+        self.client.force_login(self.user)
+        self.first_task.days_to_before_trip = -30
+        self.first_task.save()
+
+        response = self.client.post(
+            reverse("trip_task_status_update", args=[self.trip.pk, self.first_task.pk]),
+            {
+                "assigned_to": self.second_employee.pk,
+                "status": Task.Status.DONE,
+                "due_date": "2026-07-20",
+            },
+        )
+
+        self.assertRedirects(response, self.trip.get_absolute_url())
+        self.first_task.refresh_from_db()
+        self.assertEqual(self.first_task.assigned_to, self.second_employee)
+        self.assertEqual(self.first_task.status, Task.Status.DONE)
+        self.assertEqual(self.first_task.due_date, date(2026, 7, 20))
+        self.assertIsNone(self.first_task.days_to_before_trip)
+
+    def test_trip_detail_can_bulk_update_task_statuses(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("trip_bulk_task_status_update", args=[self.trip.pk]),
+            {
+                "status": Task.Status.IN_PROGRESS,
+                "task_ids": [str(self.first_task.pk), str(self.second_task.pk)],
+            },
+        )
+
+        self.assertRedirects(response, self.trip.get_absolute_url())
+        self.first_task.refresh_from_db()
+        self.second_task.refresh_from_db()
+        self.assertEqual(self.first_task.status, Task.Status.IN_PROGRESS)
+        self.assertEqual(self.second_task.status, Task.Status.IN_PROGRESS)
+
 
 class TaskTemplateStaffPageTests(TestCase):
     def setUp(self):
@@ -337,6 +821,11 @@ class TaskTemplateStaffPageTests(TestCase):
             name="Second",
             sort_order=2,
         )
+        self.pack = TaskTemplatePack.objects.create(
+            name="Standard Pack",
+            sort_order=1,
+        )
+        self.pack.task_templates.add(self.first_template, self.second_template)
 
     def _permissions(self, *codenames):
         from django.contrib.auth.models import Permission
@@ -348,6 +837,9 @@ class TaskTemplateStaffPageTests(TestCase):
 
         response = self.client.get(reverse("task_template_list"))
 
+        self.assertContains(response, "Task Template Packs")
+        self.assertContains(response, self.pack.name)
+        self.assertContains(response, reverse("task_template_pack_create"))
         self.assertContains(response, "Drag to reorder")
         self.assertContains(response, reverse("task_template_delete", args=[self.first_template.pk]))
         self.assertContains(response, "Delete")
@@ -381,6 +873,16 @@ class TaskTemplateStaffPageTests(TestCase):
         self.assertEqual(self.second_template.sort_order, 1)
         self.assertEqual(self.first_template.sort_order, 2)
 
+    def test_staff_can_delete_task_template_pack(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("task_template_pack_delete", args=[self.pack.pk])
+        )
+
+        self.assertRedirects(response, reverse("task_template_list"))
+        self.assertFalse(TaskTemplatePack.objects.filter(pk=self.pack.pk).exists())
+
 
 class SeedLegitDefaultsTests(TestCase):
     def test_seed_creates_expected_default_roles(self):
@@ -391,6 +893,12 @@ class SeedLegitDefaultsTests(TestCase):
         self.assertTrue(Group.objects.filter(name="Host").exists())
         self.assertFalse(Group.objects.filter(name="Operations Manager").exists())
         self.assertFalse(Group.objects.filter(name="Trip Manager").exists())
+
+    def test_seed_does_not_create_default_task_templates_or_packs(self):
+        call_command("seed_legit_defaults", verbosity=0)
+
+        self.assertFalse(TaskTemplate.objects.exists())
+        self.assertFalse(TaskTemplatePack.objects.exists())
 
     def test_seed_activates_only_current_trip_statuses(self):
         TripStatus.objects.create(name="Lead", is_active=True)

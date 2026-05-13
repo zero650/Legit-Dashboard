@@ -9,18 +9,12 @@
   <section class="grid" aria-label="Dashboard metrics">
     <div class="panel metric"><strong>{{ trip_count }}</strong>Total trips</div>
     <div class="panel metric"><strong>{{ open_task_count }}</strong>Open tasks</div>
-    <div class="panel metric"><strong>{{ task_template_count }}</strong>Active task templates</div>
+    <div class="panel metric"><strong>{{ running_trip_count }}</strong>Currently running trips</div>
   </section>
-
-  <div class="actions">
-    <a class="button" href="{% url 'trip_create' %}">Create trip</a>
-    <a class="button secondary" href="{% url 'task_create' %}">Create task</a>
-    <a class="button secondary" href="{% url 'task_template_list' %}">Manage templates</a>
-  </div>
 
   <section class="panel">
     <h2>Upcoming trips</h2>
-    <table>
+    <table class="responsive-table">
       <thead>
         <tr>
           <th>Trip</th>
@@ -33,11 +27,11 @@
       <tbody>
         {% for trip in upcoming_trips %}
           <tr>
-            <td><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a>{% if trip.trip_leader %}<br>{{ trip.trip_leader }}{% endif %}</td>
-            <td>{{ trip.start_date }} - {{ trip.end_date }}</td>
-            <td>{{ trip.trip_manager }}</td>
-            <td><span class="status">{{ trip.status }}</span></td>
-            <td>{{ trip.open_tasks }}</td>
+            <td data-label="Trip"><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a>{% if trip.trip_leader %}<br>{{ trip.trip_leader }}{% endif %}</td>
+            <td data-label="Dates">{{ trip.start_date }} - {{ trip.end_date }}</td>
+            <td data-label="Manager">{{ trip.trip_manager }}</td>
+            <td data-label="Status"><span class="status">{{ trip.status }}</span></td>
+            <td data-label="Open tasks">{{ trip.open_tasks }}<br><a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a></td>
           </tr>
         {% empty %}
           <tr><td colspan="5">No trips yet.</td></tr>
@@ -48,7 +42,7 @@
 
   <section class="panel" style="margin-top:18px">
     <h2>Open tasks</h2>
-    <table>
+    <table class="responsive-table">
       <thead>
         <tr>
           <th>Task</th>
@@ -61,11 +55,11 @@
       <tbody>
         {% for task in open_tasks %}
           <tr>
-            <td><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
-            <td><a href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a></td>
-            <td>{{ task.assigned_to|default:"Unassigned" }}</td>
-            <td><span class="status warn">{{ task.get_status_display }}</span></td>
-            <td>{{ task.due_date|default:"No due date" }}</td>
+            <td data-label="Task"><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
+            <td data-label="Trip"><a href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a></td>
+            <td data-label="Assigned to">{{ task.assigned_to|default:"Unassigned" }}</td>
+            <td data-label="Status"><span class="status warn">{{ task.get_status_display }}</span></td>
+            <td data-label="Due">{{ task.due_date|default:"No due date" }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="5">No open tasks.</td></tr>

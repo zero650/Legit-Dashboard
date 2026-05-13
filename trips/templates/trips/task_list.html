@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Tasks | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <style>
+    .filter-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      align-items: end;
+    }
+
+    .filter-shell {
+      margin-bottom: 18px;
+    }
+
+    .filter-toggle {
+      align-items: center;
+      display: inline-flex;
+      gap: 10px;
+      min-height: 40px;
+    }
+
+    .filter-toggle-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .filter-panel {
+      margin-top: 14px;
+    }
+
+    .filter-panel[hidden] {
+      display: none;
+    }
+
+    .task-quick-edit-form {
+      align-items: center;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+    }
+
+    .task-quick-edit-form select,
+    .task-quick-edit-form input[type="date"] {
+      min-width: 0;
+      min-height: 34px;
+      padding: 6px 8px;
+      width: auto;
+    }
+
+    .task-quick-edit-form .assignee-select {
+      min-width: 138px;
+    }
+
+    .task-quick-edit-form .status-select {
+      min-width: 116px;
+    }
+
+    .task-quick-edit-form input[type="date"] {
+      min-width: 128px;
+    }
+
+    .task-quick-edit-form.is-submitting {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    @media (max-width: 680px) {
+      .task-quick-edit-form {
+        align-items: stretch;
+        display: flex;
+        width: 100%;
+      }
+
+      .task-quick-edit-form select,
+      .task-quick-edit-form input[type="date"],
+      .task-quick-edit-form button {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <h1>Tasks</h1>
+  <p class="eyebrow">Filter, review, and update trip tasks across the whole operation.</p>
+
+  <section class="panel filter-shell">
+    <button
+      class="button secondary filter-toggle"
+      type="button"
+      data-filter-toggle="task-filters"
+      aria-expanded="{% if filters_active %}true{% else %}false{% endif %}"
+      aria-controls="task-filters"
+    >
+      <span class="filter-toggle-icon" aria-hidden="true">&#9776;</span>
+      Filters
+    </button>
+    <form method="get" class="filter-grid filter-panel" id="task-filters"{% if not filters_active %} hidden{% endif %}>
+      <div>
+        <label for="assigned_to">Assigned to</label>
+        <select id="assigned_to" name="assigned_to">
+          <option value="">All assignees</option>
+          {% for employee in employees %}
+            <option value="{{ employee.pk }}"{% if filters.assigned_to == employee.pk|stringformat:'s' %} selected{% endif %}>
+              {{ employee }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="">All statuses</option>
+          {% for status_value, status_label in task_status_choices %}
+            <option value="{{ status_value }}"{% if filters.status == status_value %} selected{% endif %}>
+              {{ status_label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="due_date_from">Due date from</label>
+        <input id="due_date_from" type="date" name="due_date_from" value="{{ filters.due_date_from }}">
+      </div>
+      <div>
+        <label for="due_date_to">Due date to</label>
+        <input id="due_date_to" type="date" name="due_date_to" value="{{ filters.due_date_to }}">
+      </div>
+      <div class="actions" style="margin: 0;">
+        <button type="submit">Apply filters</button>
+        <a class="button secondary" href="{% url 'task_list' %}">Clear</a>
+      </div>
+    </form>
+  </section>
+
+  <table class="responsive-table">
+    <thead>
+      <tr>
+        <th>Task</th>
+        <th>Trip</th>
+        <th>Assigned to / Status / Due</th>
+        <th>Due in</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in tasks %}
+        <tr>
+          <td data-label="Task">{{ task.name }}</td>
+          <td data-label="Trip"><a href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a></td>
+          <td data-label="Assigned to / Status / Due">
+            <form method="post" action="{% url 'task_quick_update' task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'task_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
+              <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
+                <option value="">Unassigned</option>
+                {% for employee in employees %}
+                  <option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>
+                    {{ employee }}
+                  </option>
+                {% endfor %}
+              </select>
+              <select name="status" aria-label="Status for {{ task.name }}" class="status-select">
+                {% for status_value, status_label in task_status_choices %}
+                  <option value="{{ status_value }}"{% if task.status == status_value %} selected{% endif %}>
+                    {{ status_label }}
+                  </option>
+                {% endfor %}
+              </select>
+              <input
+                type="date"
+                name="due_date"
+                aria-label="Due date for {{ task.name }}"
+                value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
+              >
+            </form>
+          </td>
+          <td data-label="Due in">{{ task.due_in_display }}</td>
+          <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No tasks match those filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
+      const panel = document.getElementById(button.dataset.filterToggle);
+      button.addEventListener("click", () => {
+        const willOpen = panel.hasAttribute("hidden");
+        panel.toggleAttribute("hidden");
+        button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      });
+    });
+
+    document.querySelectorAll(".task-quick-edit-form").forEach((form) => {
+      form.querySelectorAll("select, input[type='date']").forEach((field) => {
+        field.addEventListener("change", () => {
+          if (form.classList.contains("is-submitting")) {
+            return;
+          }
+          form.classList.add("is-submitting");
+          form.requestSubmit();
+        });
+      });
+    });
+  </script>
+{% endblock %}

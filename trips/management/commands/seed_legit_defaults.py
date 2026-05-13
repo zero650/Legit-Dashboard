@@ -2,7 +2,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import connection
 
-from trips.models import TaskTemplate, TripStatus
+from trips.models import TripStatus
 
 
 DEFAULT_STATUSES = [
@@ -10,46 +10,6 @@ DEFAULT_STATUSES = [
     "Closed",
     "Planning",
     "On Sale",
-]
-
-DEFAULT_TASK_TEMPLATES = [
-    ("Itinerary/Pricing Confirmed", -365, ""),
-    ("Trip Page for Website", -365, ""),
-    ("Trip Frienzy Creation", -180, "Use website and/or itinerary from DMC to create Frienzy"),
-    ("Guests Paid in Full?", -125, ""),
-    ("Pre-Trip Q&A", -120, ""),
-    ("Submit Rooming List", -60, ""),
-    ("Pre/Post Nights Added", -60, ""),
-    ("Invoice for Extras", -30, ""),
-    ("Mail Bracelets", -30, ""),
-    ("Transfer Schedule", -30, ""),
-    ("Pre-Trip Call w/ Host", -30, ""),
-    ("Upload Guest Addresses to TouchNote", -1, ""),
-    ("Request Reviews", 1, ""),
-    ("Mail TouchNotes", 1, ""),
-    (
-        "Thank Local Partner",
-        10,
-        "Send a few photos from the trip with happy smiling faces and thank the local partner.",
-    ),
-]
-
-LEGACY_TASK_TEMPLATE_NAMES = [
-    "Confirm trip leader agreement",
-    "Finalize itinerary",
-    "Confirm hotel room block",
-    "Confirm group transportation",
-    "Review vendor payment schedule",
-    "Publish traveler information packet",
-    "Collect traveler passport details",
-    "Confirm activity reservations",
-    "Send final payment reminders",
-    "Collect rooming list",
-    "Confirm dietary restrictions",
-    "Send pre-trip email",
-    "Review emergency contact list",
-    "Confirm final headcount with vendors",
-    "Send departure reminders",
 ]
 
 GROUP_PERMISSIONS = {
@@ -110,7 +70,7 @@ LEGACY_ROLE_RENAMES = {
 
 
 class Command(BaseCommand):
-    help = "Create default trip statuses, task templates, and staff role groups."
+    help = "Create default trip statuses and staff role groups."
 
     def handle(self, *args, **options):
         for index, status_name in enumerate(DEFAULT_STATUSES, start=1):
@@ -123,23 +83,6 @@ class Command(BaseCommand):
             )
 
         TripStatus.objects.exclude(name__in=DEFAULT_STATUSES).update(is_active=False)
-
-        for index, (name, day_offset, notes) in enumerate(DEFAULT_TASK_TEMPLATES, start=1):
-            TaskTemplate.objects.update_or_create(
-                name=name,
-                defaults={
-                    "days_to_before_trip": day_offset,
-                    "default_notes": notes,
-                    "sort_order": index,
-                    "is_active": True,
-                },
-            )
-
-        TaskTemplate.objects.filter(
-            name__in=LEGACY_TASK_TEMPLATE_NAMES,
-        ).exclude(
-            name__in=[name for name, _, _ in DEFAULT_TASK_TEMPLATES],
-        ).update(is_active=False)
 
         for old_name, new_name in LEGACY_ROLE_RENAMES.items():
             old_group = Group.objects.filter(name=old_name).first()

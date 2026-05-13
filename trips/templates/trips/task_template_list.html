@@ -4,6 +4,33 @@
 
 {% block content %}
   <style>
+    .page-header {
+      align-items: flex-start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .page-header-copy {
+      flex: 1 1 280px;
+      min-width: 240px;
+    }
+
+    .page-header-copy .eyebrow {
+      margin-bottom: 0;
+    }
+
+    .page-header-actions {
+      align-items: center;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      margin: 0;
+    }
+
     .drag-handle {
       background: transparent;
       border: 0;
@@ -26,14 +53,67 @@
       border-color: #b83a3a;
       color: #9f2d2d;
     }
+
+    @media (max-width: 680px) {
+      .page-header-actions {
+        width: 100%;
+      }
+
+      .page-header-actions .button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   </style>
 
-  <h1>Task Templates</h1>
-  <p class="eyebrow">Reusable trip tasks that can be applied to each new trip.</p>
+  <section class="page-header">
+    <div class="page-header-copy">
+      <h1>Task Templates</h1>
+      <p class="eyebrow">Reusable trip tasks that can be applied to each new trip.</p>
+    </div>
+    <div class="page-header-actions">
+      <a class="button" href="{% url 'task_template_create' %}">Create template</a>
+      <a class="button secondary" href="{% url 'task_template_pack_create' %}">Create pack</a>
+    </div>
+  </section>
 
-  <div class="actions">
-    <a class="button" href="{% url 'task_template_create' %}">Create template</a>
-  </div>
+  <section class="panel" style="margin-bottom: 18px;">
+    <h2>Task Template Packs</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Templates</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pack in task_template_packs %}
+          <tr>
+            <td><a href="{% url 'task_template_pack_update' pack.pk %}">{{ pack.name }}</a></td>
+            <td>{{ pack.active_template_count }}</td>
+            <td><span class="status">{{ pack.is_active|yesno:"Active,Inactive" }}</span></td>
+            <td>
+              <div class="template-actions">
+                <a href="{% url 'task_template_pack_update' pack.pk %}">Edit</a>
+                <form
+                  method="post"
+                  action="{% url 'task_template_pack_delete' pack.pk %}"
+                  onsubmit="return confirm('Delete this task template pack? It will not delete the underlying templates.');"
+                >
+                  {% csrf_token %}
+                  <button class="button secondary delete-button" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">No task template packs yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
 
   <table id="task-template-table">
     <thead>

@@ -3,53 +3,333 @@
 {% block title %}{{ trip.name }} | Legit Dashboard{% endblock %}
 
 {% block content %}
-  <h1>{{ trip.name }}</h1>
-  <p class="eyebrow">{{ trip.start_date }} - {{ trip.end_date }}</p>
+  <style>
+    .trip-header {
+      align-items: start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
 
-  <div class="actions">
-    <a class="button" href="{% url 'trip_update' trip.pk %}">Edit trip</a>
-    <a class="button secondary" href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>
-    <form method="post" action="{% url 'trip_apply_task_templates' trip.pk %}">
-      {% csrf_token %}
-      <button class="button secondary" type="submit">Add all tasks</button>
-    </form>
-  </div>
+    .trip-header-copy {
+      min-width: 240px;
+      flex: 1 1 320px;
+    }
 
-  <section class="grid">
+    .trip-header-copy .eyebrow {
+      margin-bottom: 0;
+    }
+
+    .trip-toolbar {
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: flex;
+      flex: 0 1 auto;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 12px;
+    }
+
+    .trip-toolbar .button,
+    .trip-toolbar button {
+      align-items: center;
+      display: inline-flex;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 16px;
+    }
+
+    .trip-toolbar form {
+      align-items: center;
+      display: inline-flex;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .trip-toolbar select {
+      min-height: 42px;
+      min-width: 300px;
+      padding: 0 14px;
+      width: auto;
+    }
+
+    .trip-toolbar-link {
+      min-width: 132px;
+    }
+
+    .trip-toolbar-submit {
+      min-width: 154px;
+    }
+
+    .trip-details-form {
+      margin: 0 0 12px;
+    }
+
+    .trip-summary-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(240px, 1fr) minmax(320px, 2fr);
+    }
+
+    .trip-details-form.is-submitting {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .trip-detail-select {
+      margin-top: 6px;
+      min-height: 34px;
+      min-width: 0;
+      padding: 6px 8px;
+      width: 100%;
+    }
+
+    .trip-notes-form {
+      margin: 0;
+    }
+
+    .trip-notes-form.is-submitting {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .trip-notes-textarea {
+      min-height: 220px;
+      resize: vertical;
+    }
+
+    .task-quick-edit-form {
+      align-items: center;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+    }
+
+    .task-quick-edit-form select,
+    .task-quick-edit-form input[type="date"] {
+      min-width: 0;
+      padding: 6px 8px;
+      width: auto;
+    }
+
+    .task-quick-edit-form .assignee-select {
+      min-width: 150px;
+    }
+
+    .task-quick-edit-form .status-select {
+      min-width: 130px;
+    }
+
+    .task-quick-edit-form button {
+      min-height: 32px;
+      padding: 5px 10px;
+    }
+
+    .task-quick-edit-form.is-submitting {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .task-select {
+      margin: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    @media (max-width: 680px) {
+      .trip-header {
+        gap: 12px;
+      }
+
+      .trip-summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .trip-toolbar {
+        flex-wrap: wrap;
+        justify-content: stretch;
+        width: 100%;
+      }
+
+      .trip-toolbar form,
+      .trip-toolbar .button,
+      .trip-toolbar button,
+      .trip-toolbar select {
+        width: 100%;
+      }
+
+      .task-quick-edit-form {
+        align-items: stretch;
+        display: flex;
+        width: 100%;
+      }
+
+      .task-quick-edit-form select,
+      .task-quick-edit-form input[type="date"],
+      .task-quick-edit-form button {
+        width: 100%;
+      }
+    }
+  </style>
+  <section class="trip-header">
+    <div class="trip-header-copy">
+      <h1>{{ trip.name }}</h1>
+      <p class="eyebrow">{{ trip.start_date }} - {{ trip.end_date }}</p>
+    </div>
+    <div class="trip-toolbar">
+      <a class="button secondary trip-toolbar-link" href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>
+      <form method="post" action="{% url 'trip_apply_task_templates' trip.pk %}">
+        {% csrf_token %}
+        {% if task_template_packs %}
+          <select name="task_template_pack" aria-label="Task template pack">
+            {% for pack in task_template_packs %}
+              <option value="{{ pack.pk }}">{{ pack.name }} ({{ pack.active_template_count }})</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+        <button class="button trip-toolbar-submit" type="submit">
+          {% if task_template_packs %}Add task pack{% else %}Add all tasks{% endif %}
+        </button>
+      </form>
+      <a class="button secondary trip-toolbar-link" href="{% url 'trip_update' trip.pk %}">Full edit</a>
+    </div>
+  </section>
+
+  <section class="trip-summary-grid">
     <div class="panel">
       <h2>Details</h2>
-      <p><strong>Status:</strong> <span class="status">{{ trip.status }}</span></p>
-      <p><strong>Trip ID:</strong> #{{ trip.id }}</p>
-      <p><strong>Trip manager:</strong> {{ trip.trip_manager }}</p>
-      <p><strong>Created by:</strong> {{ trip.created_by|default:"-" }}</p>
-      <p><strong>Trip leader:</strong> {{ trip.trip_leader|default:"-" }}</p>
+      <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
+        <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
+        <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
+        <label for="trip-status-select"><strong>Status</strong></label>
+        <select id="trip-status-select" name="status" class="trip-detail-select" aria-label="Status for {{ trip.name }}">
+          {% for status in trip_statuses %}
+            <option value="{{ status.pk }}"{% if trip.status_id == status.pk %} selected{% endif %}>{{ status.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+
+      <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
+        <input type="hidden" name="status" value="{{ trip.status_id }}">
+        <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
+        <label for="trip-manager-select"><strong>Trip manager</strong></label>
+        <select id="trip-manager-select" name="trip_manager" class="trip-detail-select" aria-label="Trip manager for {{ trip.name }}">
+          {% for employee in trip_managers %}
+            <option value="{{ employee.pk }}"{% if trip.trip_manager_id == employee.pk %} selected{% endif %}>{{ employee }}</option>
+          {% endfor %}
+        </select>
+      </form>
+
+      <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
+        <input type="hidden" name="status" value="{{ trip.status_id }}">
+        <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
+        <label for="trip-leader-select"><strong>Trip leader</strong></label>
+        <select id="trip-leader-select" name="trip_leader" class="trip-detail-select" aria-label="Trip leader for {{ trip.name }}">
+          <option value="">No leader</option>
+          {% for employee in trip_leaders %}
+            <option value="{{ employee.pk }}"{% if trip.trip_leader_id == employee.pk %} selected{% endif %}>{{ employee }}</option>
+          {% endfor %}
+        </select>
+      </form>
     </div>
     <div class="panel">
       <h2>Notes</h2>
-      <div>{{ trip.notes|safe|default:"No notes yet." }}</div>
+      <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-notes-form" data-preserve-scroll="true">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
+        <input type="hidden" name="status" value="{{ trip.status_id }}">
+        <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
+        <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
+        <textarea
+          name="notes"
+          class="trip-notes-textarea"
+          aria-label="Notes for {{ trip.name }}"
+          placeholder="Add trip notes here"
+        >{{ trip.notes }}</textarea>
+      </form>
     </div>
   </section>
 
   <section class="panel" style="margin-top:18px">
     <h2>Tasks</h2>
-    <table>
+    <form
+      id="bulk-task-status-form"
+      method="post"
+      action="{% url 'trip_bulk_task_status_update' trip.pk %}"
+      class="actions"
+      style="margin-bottom: 12px;"
+    >
+      {% csrf_token %}
+      <select name="status" aria-label="Bulk task status">
+        {% for status_value, status_label in task_status_choices %}
+          <option value="{{ status_value }}">{{ status_label }}</option>
+        {% endfor %}
+      </select>
+      <button class="button secondary" type="submit">Update selected tasks</button>
+    </form>
+    <table class="responsive-table">
       <thead>
         <tr>
+          <th>Select</th>
           <th>Name</th>
-          <th>Assigned to</th>
-          <th>Status</th>
-          <th>Due</th>
-          <th>Days before trip</th>
+          <th>Assigned to / Status / Due</th>
+          <th>Due in</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for task in trip.tasks.all %}
           <tr>
-            <td><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
-            <td>{{ task.assigned_to|default:"Unassigned" }}</td>
-            <td><span class="status {% if task.status != 'done' %}warn{% endif %}">{{ task.get_status_display }}</span></td>
-            <td>{{ task.due_date|default:"-" }}</td>
-            <td>{{ task.days_to_before_trip|default:"-" }}</td>
+            <td data-label="Select">
+              <input
+                class="task-select"
+                type="checkbox"
+                name="task_ids"
+                value="{{ task.pk }}"
+                form="bulk-task-status-form"
+                aria-label="Select {{ task.name }}"
+              >
+            </td>
+            <td data-label="Task"><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
+            <td data-label="Assigned to / Status / Due">
+              <form method="post" action="{% url 'trip_task_status_update' trip.pk task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
+                {% csrf_token %}
+                <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
+                  <option value="">Unassigned</option>
+                  {% for employee in employees %}
+                    <option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>
+                      {{ employee }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <select name="status" aria-label="Status for {{ task.name }}" class="status-select">
+                  {% for status_value, status_label in task_status_choices %}
+                    <option value="{{ status_value }}"{% if task.status == status_value %} selected{% endif %}>
+                      {{ status_label }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <input
+                  type="date"
+                  name="due_date"
+                  aria-label="Due date for {{ task.name }}"
+                  value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
+                >
+              </form>
+            </td>
+            <td data-label="Due in">{{ task.due_in_display }}</td>
+            <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
           </tr>
         {% empty %}
           <tr><td colspan="5">No tasks linked to this trip yet.</td></tr>
@@ -57,4 +337,49 @@
       </tbody>
     </table>
   </section>
+
+  <script>
+    document.querySelectorAll(".trip-details-form").forEach((form) => {
+      const field = form.querySelector("select");
+      field?.addEventListener("change", () => {
+        if (form.classList.contains("is-submitting")) {
+          return;
+        }
+        form.classList.add("is-submitting");
+        form.requestSubmit();
+      });
+    });
+
+    document.querySelectorAll(".trip-notes-form").forEach((form) => {
+      const field = form.querySelector("textarea");
+      if (!field) {
+        return;
+      }
+      let lastSubmittedValue = field.value;
+
+      field.addEventListener("blur", () => {
+        if (form.classList.contains("is-submitting")) {
+          return;
+        }
+        if (field.value === lastSubmittedValue) {
+          return;
+        }
+        form.classList.add("is-submitting");
+        lastSubmittedValue = field.value;
+        form.requestSubmit();
+      });
+    });
+
+    document.querySelectorAll(".task-quick-edit-form").forEach((form) => {
+      form.querySelectorAll("select, input[type='date']").forEach((field) => {
+        field.addEventListener("change", () => {
+          if (form.classList.contains("is-submitting")) {
+            return;
+          }
+          form.classList.add("is-submitting");
+          form.requestSubmit();
+        });
+      });
+    });
+  </script>
 {% endblock %}

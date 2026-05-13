@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import socket
 
 try:
     from dotenv import load_dotenv
@@ -13,9 +14,30 @@ if load_dotenv:
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in {"1", "true", "yes", "on"}
+
+
+def default_allowed_hosts():
+    hosts = {
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+        "mac",
+    }
+    try:
+        hostname = socket.gethostname().strip()
+    except OSError:
+        hostname = ""
+
+    if hostname:
+        hosts.add(hostname)
+        hosts.add(f"{hostname}.local")
+
+    return ",".join(sorted(hosts))
+
+
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", default_allowed_hosts()).split(",")
     if host.strip()
 ]
 

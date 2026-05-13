@@ -3,17 +3,180 @@
 {% block title %}Trips | Legit Dashboard{% endblock %}
 
 {% block content %}
-  <h1>Trips</h1>
-  <p class="eyebrow">All group travel projects in one queue.</p>
-  <div class="actions">
-    <a class="button" href="{% url 'trip_create' %}">Create trip</a>
-  </div>
-  <table>
+  <style>
+    .page-header {
+      align-items: flex-start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .page-header-copy {
+      flex: 1 1 280px;
+      min-width: 240px;
+    }
+
+    .page-header-copy .eyebrow {
+      margin-bottom: 0;
+    }
+
+    .page-header-actions {
+      align-items: center;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      margin: 0;
+    }
+
+    .filter-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1.4fr repeat(3, minmax(160px, 1fr));
+      align-items: end;
+    }
+
+    .filter-shell {
+      margin-bottom: 18px;
+    }
+
+    .filter-toggle {
+      align-items: center;
+      display: inline-flex;
+      gap: 10px;
+      min-height: 40px;
+    }
+
+    .filter-toggle-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .filter-panel {
+      margin-top: 14px;
+    }
+
+    .filter-panel[hidden] {
+      display: none;
+    }
+
+    .trip-quick-edit-form {
+      margin: 0;
+    }
+
+    .trip-quick-edit-form select {
+      min-height: 34px;
+      padding: 6px 8px;
+    }
+
+    .trip-quick-edit-form .person-select {
+      min-width: 142px;
+      width: auto;
+    }
+
+    .trip-quick-edit-form .status-select {
+      min-width: 118px;
+      width: auto;
+    }
+
+    .trip-quick-edit-form.is-submitting {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    @media (max-width: 680px) {
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-header-actions {
+        width: 100%;
+      }
+
+      .page-header-actions .button {
+        justify-content: center;
+        width: 100%;
+      }
+    }
+  </style>
+  <section class="page-header">
+    <div class="page-header-copy">
+      <h1>Trips</h1>
+      <p class="eyebrow">All group travel projects in one queue.</p>
+    </div>
+    <div class="page-header-actions">
+      <a class="button" href="{% url 'trip_create' %}">Create trip</a>
+    </div>
+  </section>
+  <section class="panel filter-shell">
+    <button
+      class="button secondary filter-toggle"
+      type="button"
+      data-filter-toggle="trip-filters"
+      aria-expanded="{% if filters_active %}true{% else %}false{% endif %}"
+      aria-controls="trip-filters"
+    >
+      <span class="filter-toggle-icon" aria-hidden="true">&#9776;</span>
+      Filters
+    </button>
+    <form method="get" class="filter-grid filter-panel" id="trip-filters"{% if not filters_active %} hidden{% endif %}>
+      <div>
+        <label for="trip-search">Search</label>
+        <input
+          id="trip-search"
+          type="search"
+          name="q"
+          value="{{ filters.q }}"
+          placeholder="Trip, manager, or leader"
+        >
+      </div>
+      <div>
+        <label for="trip-status-filter">Status</label>
+        <select id="trip-status-filter" name="status">
+          <option value="">All statuses</option>
+          {% for status in trip_statuses %}
+            <option value="{{ status.pk }}"{% if filters.status == status.pk|stringformat:'s' %} selected{% endif %}>
+              {{ status.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="trip-manager-filter">Manager</label>
+        <select id="trip-manager-filter" name="trip_manager">
+          <option value="">All managers</option>
+          {% for employee in trip_managers %}
+            <option value="{{ employee.pk }}"{% if filters.trip_manager == employee.pk|stringformat:'s' %} selected{% endif %}>
+              {{ employee }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="trip-leader-filter">Leader</label>
+        <select id="trip-leader-filter" name="trip_leader">
+          <option value="">All leaders</option>
+          {% for employee in trip_leaders %}
+            <option value="{{ employee.pk }}"{% if filters.trip_leader == employee.pk|stringformat:'s' %} selected{% endif %}>
+              {{ employee }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="actions" style="margin: 0;">
+        <button type="submit">Apply filters</button>
+        <a class="button secondary" href="{% url 'trip_list' %}">Clear</a>
+      </div>
+    </form>
+  </section>
+  <table class="responsive-table">
     <thead>
       <tr>
-        <th>ID</th>
         <th>Name</th>
         <th>Dates</th>
+        <th>Open Tasks</th>
         <th>Leader</th>
         <th>Manager</th>
         <th>Status</th>
@@ -22,16 +185,80 @@
     <tbody>
       {% for trip in trips %}
         <tr>
-          <td>#{{ trip.id }}</td>
-          <td><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></td>
-          <td>{{ trip.start_date }} - {{ trip.end_date }}</td>
-          <td>{{ trip.trip_leader|default:"-" }}</td>
-          <td>{{ trip.trip_manager }}</td>
-          <td><span class="status">{{ trip.status }}</span></td>
+          <td data-label="Name"><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></td>
+          <td data-label="Dates">{{ trip.start_date }} - {{ trip.end_date }}</td>
+          <td data-label="Open Tasks">{{ trip.open_tasks }}</td>
+          <td data-label="Leader">
+            <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'trip_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
+              <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
+              <input type="hidden" name="status" value="{{ trip.status_id }}">
+              <select name="trip_leader" aria-label="Leader for {{ trip.name }}" class="person-select">
+                <option value="">No leader</option>
+                {% for employee in trip_leaders %}
+                  <option value="{{ employee.pk }}"{% if trip.trip_leader_id == employee.pk %} selected{% endif %}>
+                    {{ employee }}
+                  </option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td data-label="Manager">
+            <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'trip_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
+              <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
+              <input type="hidden" name="status" value="{{ trip.status_id }}">
+              <select name="trip_manager" aria-label="Manager for {{ trip.name }}" class="person-select">
+                {% for employee in trip_managers %}
+                  <option value="{{ employee.pk }}"{% if trip.trip_manager_id == employee.pk %} selected{% endif %}>
+                    {{ employee }}
+                  </option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td data-label="Status">
+            <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'trip_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
+              <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
+              <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
+              <select name="status" aria-label="Status for {{ trip.name }}" class="status-select">
+                {% for status in trip_statuses %}
+                  <option value="{{ status.pk }}"{% if trip.status_id == status.pk %} selected{% endif %}>
+                    {{ status.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
         </tr>
       {% empty %}
         <tr><td colspan="6">No trips yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
+  <script>
+    document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
+      const panel = document.getElementById(button.dataset.filterToggle);
+      button.addEventListener("click", () => {
+        const willOpen = panel.hasAttribute("hidden");
+        panel.toggleAttribute("hidden");
+        button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      });
+    });
+
+    document.querySelectorAll(".trip-quick-edit-form").forEach((form) => {
+      const field = form.querySelector("select");
+      field?.addEventListener("change", () => {
+        if (form.classList.contains("is-submitting")) {
+          return;
+        }
+        form.classList.add("is-submitting");
+        form.requestSubmit();
+      });
+    });
+  </script>
 {% endblock %}

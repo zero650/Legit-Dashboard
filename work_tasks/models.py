@@ -1,4 +1,4 @@
-from trips.models import Task, TaskTemplate
+from trips.models import Task, TaskTemplate, TaskTemplatePack
 
 
 class WorkTask(Task):
@@ -14,3 +14,9 @@ class WorkTaskTemplate(TaskTemplate):
         verbose_name = "Task Template"
         verbose_name_plural = "Task Templates"
 
+
+class WorkTaskTemplatePack(TaskTemplatePack):
+    class Meta:
+        proxy = True
+        verbose_name = "Task Template Pack"
+        verbose_name_plural = "Task Template Packs"
