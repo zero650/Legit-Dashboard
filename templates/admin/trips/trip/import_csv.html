@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url 'admin:trips_trip_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; Import CSV
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <h1>{{ title }}</h1>
+    <p>Upload a CSV with headers: <code>name</code>, <code>start_date</code>, <code>end_date</code>, <code>trip_manager_email</code>, <code>status</code>, <code>trip_leader_email</code>, <code>notes</code>.</p>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <fieldset class="module aligned">
+        {{ form.as_p }}
+      </fieldset>
+      <div class="submit-row">
+        <input type="submit" value="Import trips" class="default">
+      </div>
+    </form>
+  </div>
+{% endblock %}

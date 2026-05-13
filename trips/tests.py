@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
@@ -927,3 +928,54 @@ class SeedLegitDefaultsTests(TestCase):
         self.assertTrue(employee.roles.filter(name="Staff").exists())
         self.assertFalse(Group.objects.filter(name="Operations Manager").exists())
         self.assertFalse(Group.objects.filter(name="Trip Manager").exists())
+
+
+class TripAdminImportTests(TestCase):
+    def setUp(self):
+        self.admin_user = get_user_model().objects.create_superuser(
+            email="admin@example.com",
+            password="password",
+        )
+        self.staff_role, _ = Group.objects.get_or_create(name="Staff")
+        self.host_role, _ = Group.objects.get_or_create(name="Host")
+        self.manager_user = get_user_model().objects.create_user(email="manager@example.com")
+        self.manager_employee = Employee.objects.create(user=self.manager_user)
+        self.manager_employee.roles.add(self.staff_role)
+        self.host_user = get_user_model().objects.create_user(email="host@example.com")
+        self.host_employee = Employee.objects.create(user=self.host_user)
+        self.host_employee.roles.add(self.host_role)
+        self.status = TripStatus.objects.create(name="Planning", is_active=True)
+
+    def test_trip_admin_changelist_shows_import_csv_link(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("admin:trips_trip_changelist"))
+
+        self.assertContains(response, reverse("admin:trips_trip_import_csv"))
+        self.assertContains(response, "Import CSV")
+
+    def test_admin_can_import_trips_from_csv(self):
+        self.client.force_login(self.admin_user)
+
+        csv_content = (
+            "name,start_date,end_date,trip_manager_email,status,trip_leader_email,notes\n"
+            "Italy Dolomites Adventure,2026-06-12,2026-06-19,manager@example.com,Planning,host@example.com,Imported note\n"
+        )
+        upload = SimpleUploadedFile(
+            "trips.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("admin:trips_trip_import_csv"),
+            {"csv_file": upload},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        trip = Trip.objects.get(name="Italy Dolomites Adventure")
+        self.assertEqual(trip.trip_manager, self.manager_employee)
+        self.assertEqual(trip.trip_leader, self.host_employee)
+        self.assertEqual(trip.status, self.status)
+        self.assertEqual(trip.notes, "Imported note")
