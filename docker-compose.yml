@@ -6,6 +6,10 @@ services:
       DJANGO_SECRET_KEY: dev-only-change-me
       DJANGO_DEBUG: "True"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://localhost,https://127.0.0.1
+      DJANGO_SECURE_SSL_REDIRECT: "False"
+      DJANGO_SESSION_COOKIE_SECURE: "True"
+      DJANGO_CSRF_COOKIE_SECURE: "True"
       POSTGRES_DB: legit_dashboard
       POSTGRES_USER: legit
       POSTGRES_PASSWORD: legit
@@ -14,13 +18,27 @@ services:
       DJANGO_SUPERUSER_USERNAME: admin@example.com
       DJANGO_SUPERUSER_EMAIL: admin@example.com
       DJANGO_SUPERUSER_PASSWORD: admin
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - .:/app
     depends_on:
       db:
         condition: service_healthy
+
+  caddy:
+    image: caddy:2.8-alpine
+    environment:
+      SITE_HOST: localhost
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
 
   db:
     image: postgres:16
@@ -38,3 +56,5 @@ services:
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

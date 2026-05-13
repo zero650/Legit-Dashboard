@@ -56,9 +56,11 @@ Start the full app and database:
 docker compose up --build
 ```
 
-Open http://127.0.0.1:8000.
+Open https://localhost.
 
-To test from an iPhone on the same Wi-Fi network, use your Mac's local network name or LAN IP, for example `http://mac.local:8000` or `http://192.168.1.25:8000`.
+Docker runs Caddy in front of Django so local traffic goes through HTTPS. The local certificate is issued by Caddy's internal CA, so your browser may ask you to accept or trust the certificate the first time.
+
+To test from an iPhone on the same Wi-Fi network, set `SITE_HOST` and `DJANGO_ALLOWED_HOSTS` to your Mac's local network name or LAN IP, then open the HTTPS URL for that host.
 
 The development container creates a starter admin user automatically:
 
@@ -70,6 +72,8 @@ Password: admin
 On startup, the web container waits for PostgreSQL, runs migrations, seeds the default statuses and permission groups, collects static files, and starts Django.
 
 PostgreSQL is only exposed inside the Docker network by default, so it will not conflict with another local Postgres running on your Mac.
+
+For a public domain, point DNS at the host, set `SITE_HOST` to the domain, set `DJANGO_ALLOWED_HOSTS` to the same domain, and set `DJANGO_CSRF_TRUSTED_ORIGINS=https://your-domain.com`. Caddy will use a publicly trusted certificate when the domain is reachable from the internet.
 
 Task templates can be managed at `/task-templates/`. Open a trip and use **Apply task templates** to create that trip's own task records with calculated due dates. Negative day offsets are before the trip starts; positive offsets are after the trip starts.
 
@@ -100,7 +104,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000 and log in with the superuser.
+Open http://127.0.0.1:8000 and log in with the superuser when running Django directly without Caddy. Use the Docker setup for HTTPS.
 
 ## Useful Commands
 

@@ -52,7 +52,28 @@ def configured_allowed_hosts():
     return sorted(hosts)
 
 
+def configured_csrf_trusted_origins():
+    origins = {
+        origin.strip()
+        for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+        if origin.strip()
+    }
+
+    if DEBUG:
+        origins.update(
+            {
+                "http://localhost",
+                "http://127.0.0.1",
+                "https://localhost",
+                "https://127.0.0.1",
+            }
+        )
+
+    return sorted(origins)
+
+
 ALLOWED_HOSTS = configured_allowed_hosts()
+CSRF_TRUSTED_ORIGINS = configured_csrf_trusted_origins()
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -132,6 +153,26 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+SESSION_COOKIE_SECURE = os.getenv("DJANGO_SESSION_COOKIE_SECURE", "False").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+CSRF_COOKIE_SECURE = os.getenv("DJANGO_CSRF_COOKIE_SECURE", "False").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "staff_users.User"
