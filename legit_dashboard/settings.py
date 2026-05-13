@@ -35,11 +35,20 @@ def default_allowed_hosts():
     return ",".join(sorted(hosts))
 
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", default_allowed_hosts()).split(",")
-    if host.strip()
-]
+def configured_allowed_hosts():
+    hosts = {
+        host.strip()
+        for host in default_allowed_hosts().split(",")
+        if host.strip()
+    }
+
+    extra_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
+    hosts.update(host.strip() for host in extra_hosts.split(",") if host.strip())
+
+    return sorted(hosts)
+
+
+ALLOWED_HOSTS = configured_allowed_hosts()
 
 INSTALLED_APPS = [
     "django.contrib.admin",

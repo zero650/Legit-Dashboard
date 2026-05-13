@@ -52,6 +52,8 @@ docker compose up --build
 
 Open http://127.0.0.1:8000.
 
+To test from an iPhone on the same Wi-Fi network, use your Mac's local network name or LAN IP, for example `http://mac.local:8000` or `http://192.168.1.25:8000`.
+
 The development container creates a starter admin user automatically:
 
 ```text
