@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Trip Dashboard | Legit Dashboard{% endblock %}
+{% block title %}Dashboard | Legit Dashboard{% endblock %}
 
 {% block content %}
   <section class="hero-shell">
     <div class="hero-copy">
       <p class="page-kicker">Daily operations</p>
-      <h1>Trip operations with a little more wanderlust.</h1>
-      <p class="eyebrow">Track departures, responsibilities, due dates, and open work in a dashboard that feels closer to the Legit Trips brand.</p>
+      <h1>Dashboard</h1>
+      <p class="eyebrow">A clean overview of running trips, open task work, and the customers traveling with Legit Trips most often.</p>
     </div>
   </section>
 
@@ -32,8 +32,8 @@
   <section class="table-card">
     <div class="table-header">
       <div>
-        <p class="page-kicker">Departure board</p>
-        <h2>Upcoming trips</h2>
+        <p class="page-kicker">Trip board</p>
+        <h2>Running and upcoming trips</h2>
       </div>
       <p class="table-intro">A clear read on what is launching next, who is running it, and where the remaining work is hiding.</p>
     </div>
@@ -92,6 +92,36 @@
           </tr>
         {% empty %}
           <tr><td colspan="5" class="empty-state">No open tasks.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="table-card" style="margin-top:18px">
+    <div class="table-header">
+      <div>
+        <p class="page-kicker">CRM snapshot</p>
+        <h2>Top customers</h2>
+      </div>
+      <p class="table-intro">The five customers with the highest recorded trip count.</p>
+    </div>
+    <table class="responsive-table">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Email</th>
+          <th>Trips</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customer in top_customers %}
+          <tr>
+            <td data-label="Customer"><a href="{{ customer.get_absolute_url }}">{{ customer.full_name }}</a></td>
+            <td data-label="Email"><a href="mailto:{{ customer.email }}">{{ customer.email }}</a></td>
+            <td data-label="Trips">{{ customer.trip_count }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="empty-state">No customer trip history yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

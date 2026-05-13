@@ -8,6 +8,8 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView
 
+from crm.models import Customer
+
 from .forms import (
     TaskCreateForm,
     TaskForm,
@@ -52,6 +54,11 @@ class TripDashboardView(LoginRequiredMixin, TemplateView):
             start_date__lte=today,
             end_date__gte=today,
         ).count()
+        context["top_customers"] = (
+            Customer.objects.annotate(trip_count=Count("trip_history"))
+            .filter(trip_count__gt=0)
+            .order_by("-trip_count", "last_name", "first_name")[:5]
+        )
         return context
 
 

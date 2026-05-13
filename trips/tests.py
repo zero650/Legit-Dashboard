@@ -10,6 +10,8 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from crm.models import Customer, CustomerTripHistory
+
 from .forms import TripForm
 from .models import Employee, Task, TaskTemplate, TaskTemplatePack, Trip, TripStatus
 
@@ -367,6 +369,30 @@ class TripDashboardTests(TestCase):
         self.assertContains(response, f'{reverse("task_create")}?trip={running_trip.pk}')
         self.assertNotContains(response, "Active task templates")
         self.assertNotContains(response, "Create task")
+
+    def test_dashboard_shows_top_five_customers_by_trip_count(self):
+        for index in range(6):
+            customer = Customer.objects.create(
+                first_name=f"Customer{index}",
+                last_name="Traveler",
+                email=f"customer{index}@example.com",
+            )
+            for trip_index in range(index + 1):
+                CustomerTripHistory.objects.create(
+                    customer=customer,
+                    trip_name=f"Trip {trip_index}",
+                    trip_start_date="2026-01-01",
+                    trip_end_date="2026-01-07",
+                    money_spent="1000.00",
+                )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+
+        self.assertContains(response, "Top customers")
+        self.assertContains(response, "Customer5 Traveler")
+        self.assertContains(response, "Customer1 Traveler")
+        self.assertNotContains(response, "Customer0 Traveler")
 
 
 class TripListQuickUpdateTests(TestCase):

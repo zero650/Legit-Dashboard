@@ -69,6 +69,13 @@
       gap: 18px;
     }
 
+    .task-section-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
     @media (max-width: 680px) {
       .task-quick-edit-form {
         align-items: stretch;
@@ -86,8 +93,12 @@
   <section class="hero-shell">
     <div class="hero-copy">
       <p class="page-kicker">Ops detail</p>
-      <h1>Keep the moving pieces beautifully visible.</h1>
-      <p class="eyebrow">Filter, review, and update the work behind every departure with a calmer, more brand-aligned tasks view.</p>
+      <h1>Tasks</h1>
+      <p class="eyebrow">Filter, review, and update all task work, with quick access to trips and reusable task templates.</p>
+      <div class="task-section-actions">
+        <a class="button secondary" href="{% url 'trip_list' %}">Trips</a>
+        <a class="button secondary" href="{% url 'task_template_list' %}">Task Templates</a>
+      </div>
     </div>
   </section>
 
@@ -145,7 +156,7 @@
     <div class="table-header">
       <div>
         <p class="page-kicker">Task board</p>
-        <h2>All tasks</h2>
+        <h2>All Tasks</h2>
       </div>
       <p class="table-intro">Fast inline updates for assignee, status, and due date, wrapped in a presentation that feels less like a back office spreadsheet.</p>
     </div>
