@@ -21,9 +21,12 @@ def default_allowed_hosts():
         "localhost",
         "127.0.0.1",
         "0.0.0.0",
-        "192.168.20.12"
+        "192.168.20.12",
         "mac",
     }
+    if DEBUG:
+        hosts.add("*")
+
     try:
         hostname = socket.gethostname().strip()
     except OSError:
