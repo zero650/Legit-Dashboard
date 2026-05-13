@@ -1,23 +1,12 @@
 services:
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: ${WEB_COMMAND:-python manage.py runserver 0.0.0.0:8000}
+    env_file:
+      - .env
     environment:
-      DJANGO_SECRET_KEY: dev-only-change-me
-      DJANGO_DEBUG: "True"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
-      DJANGO_CSRF_TRUSTED_ORIGINS: https://localhost,https://127.0.0.1
-      DJANGO_SECURE_SSL_REDIRECT: "False"
-      DJANGO_SESSION_COOKIE_SECURE: "True"
-      DJANGO_CSRF_COOKIE_SECURE: "True"
-      POSTGRES_DB: legit_dashboard
-      POSTGRES_USER: legit
-      POSTGRES_PASSWORD: legit
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      DJANGO_SUPERUSER_USERNAME: admin@example.com
-      DJANGO_SUPERUSER_EMAIL: admin@example.com
-      DJANGO_SUPERUSER_PASSWORD: admin
     expose:
       - "8000"
     volumes:
@@ -28,8 +17,10 @@ services:
 
   caddy:
     image: caddy:2.8-alpine
+    env_file:
+      - .env
     environment:
-      SITE_HOST: localhost
+      SITE_HOST: ${SITE_HOST:-localhost}
     ports:
       - "80:80"
       - "443:443"

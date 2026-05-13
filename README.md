@@ -69,11 +69,41 @@ Email: admin@example.com
 Password: admin
 ```
 
+The default compose file is for local development only. It reads its settings from `.env`, keeps the source tree bind-mounted, and can optionally create a local superuser when `DJANGO_CREATE_SUPERUSER=1`.
+
 On startup, the web container waits for PostgreSQL, runs migrations, seeds the default statuses and permission groups, collects static files, and starts Django.
 
 PostgreSQL is only exposed inside the Docker network by default, so it will not conflict with another local Postgres running on your Mac.
 
-For a public domain, point DNS at the host, set `SITE_HOST` to the domain, set `DJANGO_ALLOWED_HOSTS` to the same domain, and set `DJANGO_CSRF_TRUSTED_ORIGINS=https://your-domain.com`. Caddy will use a publicly trusted certificate when the domain is reachable from the internet.
+For Cloudflare Tunnel testing, copy `.env.production.example` to `.env`, replace the secret values, and run:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.production.yml up --build -d
+```
+
+This production overlay switches Django to `gunicorn`, removes the source-code bind mount, and exposes the origin only on `127.0.0.1:8080` for the local tunnel client. Point your Cloudflare Zero Trust Tunnel for `dashboard.jamesonbates.net` at `http://127.0.0.1:8080`.
+
+Suggested Cloudflare Access posture:
+
+- Require your email address or identity provider group
+- Require MFA
+- Enable WAF managed rules
+- Rate-limit `/accounts/login/` and `/admin/`
+
+Customer documents now stream through an authenticated CRM route instead of direct storage URLs, but uploaded files still contain sensitive travel data. Use redacted test data unless you are comfortable with the current document-handling model.
+
+## Branch Workflow
+
+Use two long-lived branches:
+
+- `development` for day-to-day work and feature changes
+- `production` for the exact commits you are willing to expose through Cloudflare Tunnel
+
+Recommended release flow:
+
+1. Work and test on `development`
+2. Merge or fast-forward the approved commit into `production`
+3. Deploy the `production` branch with the production compose overlay and production `.env`
 
 Task templates can be managed at `/task-templates/`. Open a trip and use **Apply task templates** to create that trip's own task records with calculated due dates. Negative day offsets are before the trip starts; positive offsets are after the trip starts.
 

@@ -139,6 +139,67 @@ class CustomerViewTests(TestCase):
         document = CustomerDocument.objects.get(customer=customer)
         self.assertEqual(document.title, "Passport")
 
+    def test_customer_document_file_requires_authentication(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+        )
+        document = CustomerDocument.objects.create(
+            customer=customer,
+            title="Passport",
+            file=SimpleUploadedFile("passport.pdf", b"%PDF-1.4", content_type="application/pdf"),
+        )
+
+        self.client.logout()
+        response = self.client.get(
+            reverse("crm_customer_document_file", kwargs={"customer_pk": customer.pk, "pk": document.pk})
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response["Location"])
+
+    def test_customer_document_file_requires_view_permission(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+        )
+        document = CustomerDocument.objects.create(
+            customer=customer,
+            title="Passport",
+            file=SimpleUploadedFile("passport.pdf", b"%PDF-1.4", content_type="application/pdf"),
+        )
+        self.user.user_permissions.remove(
+            Permission.objects.get(codename="view_customer")
+        )
+
+        response = self.client.get(
+            reverse("crm_customer_document_file", kwargs={"customer_pk": customer.pk, "pk": document.pk})
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_customer_document_file_streams_for_authorized_user(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+        )
+        document = CustomerDocument.objects.create(
+            customer=customer,
+            title="Passport",
+            file=SimpleUploadedFile("passport.pdf", b"%PDF-1.4", content_type="application/pdf"),
+        )
+
+        response = self.client.get(
+            reverse("crm_customer_document_file", kwargs={"customer_pk": customer.pk, "pk": document.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
     def test_can_add_customer_trip_history(self):
         customer = Customer.objects.create(
             first_name="Avery",

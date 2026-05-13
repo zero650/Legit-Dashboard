@@ -1,0 +1,10 @@
+services:
+  web:
+    command: gunicorn legit_dashboard.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    volumes: []
+
+  caddy:
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./docker/Caddyfile.production:/etc/caddy/Caddyfile:ro

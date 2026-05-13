@@ -7,6 +7,7 @@ from .views import (
     CustomerDetailView,
     CustomerDocumentCreateView,
     CustomerDocumentDeleteView,
+    CustomerDocumentServeView,
     CustomerListView,
     CustomerTripHistoryCreateView,
     CustomerTripHistoryDeleteView,
@@ -30,6 +31,11 @@ urlpatterns = [
         "customers/<int:customer_pk>/documents/<int:pk>/delete/",
         CustomerDocumentDeleteView.as_view(),
         name="crm_customer_document_delete",
+    ),
+    path(
+        "customers/<int:customer_pk>/documents/<int:pk>/file/",
+        CustomerDocumentServeView.as_view(),
+        name="crm_customer_document_file",
     ),
     path(
         "customers/<int:customer_pk>/trip-history/",

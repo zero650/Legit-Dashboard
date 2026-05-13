@@ -1,5 +1,6 @@
 import csv
 import io
+import mimetypes
 from decimal import Decimal
 
 from django.contrib import messages
@@ -7,6 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.core.exceptions import ValidationError
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.dateparse import parse_date
 from django.urls import reverse_lazy
@@ -290,6 +292,23 @@ class CustomerDocumentDeleteView(LoginRequiredMixin, PermissionRequiredMixin, Vi
         document.delete()
         messages.success(request, f"Removed {display_name}.")
         return redirect(customer)
+
+
+class CustomerDocumentServeView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "crm.view_customer"
+
+    def get(self, request, customer_pk, pk):
+        customer = get_object_or_404(Customer, pk=customer_pk)
+        document = get_object_or_404(CustomerDocument, pk=pk, customer=customer)
+        content_type, _ = mimetypes.guess_type(document.file.name)
+        response = FileResponse(
+            document.file.open("rb"),
+            as_attachment=False,
+            filename=document.display_name,
+            content_type=content_type or "application/octet-stream",
+        )
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
 
 class CustomerTripHistoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, View):
