@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Staff | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <style>
+    .page-header-actions {
+      align-items: center;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      margin: 0;
+    }
+
+    .staff-list-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .staff-filter-grid {
+      align-items: end;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(0, 1.5fr) auto;
+    }
+
+    .staff-metrics {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .staff-roles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .staff-role-pill {
+      background: var(--accent-soft);
+      border-radius: 999px;
+      color: var(--accent-dark);
+      display: inline-flex;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 6px 10px;
+      text-transform: uppercase;
+    }
+
+    .staff-name {
+      display: grid;
+      gap: 4px;
+    }
+
+    .staff-meta {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 680px) {
+      .staff-filter-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <section class="hero-shell">
+    <div class="split-callout">
+      <div class="hero-copy">
+        <p class="page-kicker">Staff system</p>
+        <h1>Manage employees and user access.</h1>
+        <p class="eyebrow">Create staff accounts, update names and roles, and keep trip managers, hosts, and admin access organized in one place.</p>
+      </div>
+      {% if perms.staff_users.add_user %}
+        <div class="page-header-actions">
+          <a class="button sun" href="{% url 'staff_create' %}">Add staff member</a>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="staff-metrics" aria-label="Staff metrics">
+    <div class="panel metric">
+      <span class="metric-label">Staff profiles</span>
+      <strong>{{ staff_count }}</strong>
+      <span class="metric-note">Employees connected to dashboard users.</span>
+    </div>
+    <div class="panel metric">
+      <span class="metric-label">Managers</span>
+      <strong>{{ active_trip_manager_count }}</strong>
+      <span class="metric-note">People eligible to manage trips today.</span>
+    </div>
+    <div class="panel metric">
+      <span class="metric-label">Hosts</span>
+      <strong>{{ host_count }}</strong>
+      <span class="metric-note">Employees available for trip leader assignments.</span>
+    </div>
+  </section>
+
+  <section class="staff-list-shell">
+    <section class="panel soft">
+      <form method="get" class="staff-filter-grid">
+        <div>
+          <label for="staff-search">Search staff</label>
+          <input
+            id="staff-search"
+            type="search"
+            name="q"
+            value="{{ filters.q }}"
+            placeholder="Name, email, or role"
+          >
+        </div>
+        <div class="actions" style="margin: 0;">
+          <button type="submit">Search</button>
+          {% if filters_active %}
+            <a class="button secondary" href="{% url 'staff_list' %}">Clear</a>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+
+    <section class="table-card">
+      <div class="table-header">
+        <div>
+          <p class="page-kicker">Directory</p>
+          <h2>Staff</h2>
+        </div>
+        <p class="table-intro">A full view of each user record, current roles, and whether that person is active inside the system.</p>
+      </div>
+      <table class="responsive-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Roles</th>
+            <th>Trips</th>
+            <th>Open tasks</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for staff_member in staff_members %}
+            <tr>
+              <td data-label="Name">
+                <div class="staff-name">
+                  {% if perms.staff_users.change_user %}
+                    <a href="{% url 'staff_update' staff_member.pk %}">{{ staff_member.get_full_name|default:staff_member.email }}</a>
+                  {% else %}
+                    <span>{{ staff_member.get_full_name|default:staff_member.email }}</span>
+                  {% endif %}
+                  <span class="staff-meta">{{ staff_member.email }}</span>
+                </div>
+              </td>
+              <td data-label="Roles">
+                <div class="staff-roles">
+                  {% for role in staff_member.role_list %}
+                    <span class="staff-role-pill">{{ role.name }}</span>
+                  {% empty %}
+                    <span class="staff-meta">No roles</span>
+                  {% endfor %}
+                </div>
+              </td>
+              <td data-label="Trips">{{ staff_member.managed_trip_count }}</td>
+              <td data-label="Open tasks">{{ staff_member.assigned_task_count }}</td>
+              <td data-label="Status">
+                <span class="status{% if not staff_member.is_active %} warn{% endif %}">
+                  {% if staff_member.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+                {% if staff_member.is_staff %}<br><span class="staff-meta">Admin enabled</span>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="empty-state">No staff records yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </section>
+{% endblock %}

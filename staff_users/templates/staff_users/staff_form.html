@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Staff | Legit Dashboard{% endblock %}
+
+{% block content %}
+  <style>
+    .checkbox-fieldset {
+      border: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .checkbox-fieldset legend {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+      padding: 0;
+    }
+
+    .checkbox-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .checkbox-list label {
+      align-items: center;
+      display: flex;
+      font-weight: 600;
+      gap: 10px;
+      margin-bottom: 0;
+    }
+
+    .checkbox-list input[type="checkbox"] {
+      width: auto;
+    }
+  </style>
+
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="page-kicker">{{ page_kicker }}</p>
+      <h1>{{ form_title }}</h1>
+      <p class="eyebrow">{{ page_intro }}</p>
+    </div>
+  </section>
+
+  <form method="post" class="fields">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% if field.name == "roles" %}
+        <fieldset class="checkbox-fieldset">
+          <legend>{{ field.label }}</legend>
+          <div class="checkbox-list">
+            {{ field }}
+          </div>
+          {{ field.errors }}
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        </fieldset>
+      {% else %}
+        <div>
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {{ field.errors }}
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    <div class="actions">
+      <button type="submit">Save staff member</button>
+      <a class="button secondary" href="{% url 'staff_list' %}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

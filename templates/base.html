@@ -498,6 +498,9 @@
           <a href="{% url 'trip_dashboard' %}">Dashboard</a>
           <a href="{% url 'task_list' %}">Tasks</a>
           <a href="{% url 'crm_customer_list' %}">CRM</a>
+          {% if perms.staff_users.view_user %}
+            <a href="{% url 'staff_list' %}">Staff</a>
+          {% endif %}
           {% if user.is_staff %}
             <a href="{% url 'admin:index' %}">Admin</a>
           {% endif %}
