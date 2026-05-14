@@ -104,25 +104,20 @@
 
     .task-quick-edit-form {
       align-items: center;
-      display: inline-flex;
-      flex-wrap: wrap;
+      display: grid;
       gap: 6px;
+      grid-template-columns: minmax(150px, 1fr) minmax(120px, 0.72fr) minmax(150px, 0.82fr);
       margin: 0;
+      max-width: 760px;
+      width: 100%;
     }
 
     .task-quick-edit-form select,
     .task-quick-edit-form input[type="date"] {
+      min-height: 44px;
       min-width: 0;
       padding: 6px 8px;
-      width: auto;
-    }
-
-    .task-quick-edit-form .assignee-select {
-      min-width: 150px;
-    }
-
-    .task-quick-edit-form .status-select {
-      min-width: 130px;
+      width: 100%;
     }
 
     .task-quick-edit-form button {
@@ -139,6 +134,45 @@
       margin: 0;
       width: 16px;
       height: 16px;
+    }
+
+    .trip-task-table {
+      table-layout: fixed;
+    }
+
+    .trip-task-table th:nth-child(1),
+    .trip-task-table td:nth-child(1) {
+      width: 10%;
+    }
+
+    .trip-task-table th:nth-child(2),
+    .trip-task-table td:nth-child(2) {
+      width: 25%;
+    }
+
+    .trip-task-table th:nth-child(3),
+    .trip-task-table td:nth-child(3) {
+      width: 46%;
+    }
+
+    .trip-task-table th:nth-child(4),
+    .trip-task-table td:nth-child(4) {
+      width: 11%;
+    }
+
+    .trip-task-table th:nth-child(5),
+    .trip-task-table td:nth-child(5) {
+      width: 8%;
+    }
+
+    @media (max-width: 1100px) {
+      .task-quick-edit-form {
+        grid-template-columns: minmax(150px, 1fr) minmax(120px, 0.8fr);
+      }
+
+      .task-quick-edit-form input[type="date"] {
+        grid-column: 1 / -1;
+      }
     }
 
     @media (max-width: 680px) {
@@ -178,7 +212,13 @@
         align-items: stretch;
         display: grid;
         gap: 8px;
+        grid-template-columns: 1fr;
+        max-width: none;
         width: 100%;
+      }
+
+      .task-quick-edit-form input[type="date"] {
+        grid-column: auto;
       }
 
       .task-quick-edit-form select,
@@ -307,7 +347,7 @@
       </select>
       <button class="button secondary" type="submit">Update selected tasks</button>
     </form>
-    <table class="responsive-table">
+    <table class="responsive-table trip-task-table">
       <thead>
         <tr>
           <th>Select</th>
