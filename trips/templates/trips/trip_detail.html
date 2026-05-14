@@ -146,12 +146,17 @@
         gap: 12px;
       }
 
+      .trip-header-copy {
+        min-width: 0;
+      }
+
       .trip-summary-grid {
         grid-template-columns: 1fr;
       }
 
       .trip-toolbar {
-        flex-wrap: wrap;
+        display: grid;
+        gap: 8px;
         justify-content: stretch;
         width: 100%;
       }
@@ -160,19 +165,32 @@
       .trip-toolbar .button,
       .trip-toolbar button,
       .trip-toolbar select {
+        min-width: 0;
         width: 100%;
+      }
+
+      .trip-detail-select,
+      .trip-notes-textarea {
+        min-height: 48px;
       }
 
       .task-quick-edit-form {
         align-items: stretch;
-        display: flex;
+        display: grid;
+        gap: 8px;
         width: 100%;
       }
 
       .task-quick-edit-form select,
       .task-quick-edit-form input[type="date"],
       .task-quick-edit-form button {
+        min-height: 48px;
         width: 100%;
+      }
+
+      .task-select {
+        height: 24px;
+        width: 24px;
       }
     }
   </style>

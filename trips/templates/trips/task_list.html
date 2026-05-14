@@ -175,9 +175,25 @@
         table-layout: auto;
       }
 
+      .filter-toggle {
+        justify-content: center;
+        width: 100%;
+      }
+
+      .task-list-shell {
+        gap: 14px;
+      }
+
+      .task-section-actions {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr;
+      }
+
       .task-quick-edit-form {
         align-items: stretch;
-        display: flex;
+        display: grid;
+        gap: 8px;
         grid-template-columns: none;
         position: static;
         width: 100%;
@@ -191,7 +207,13 @@
       .task-quick-edit-form select,
       .task-quick-edit-form input[type="date"],
       .task-quick-edit-form button {
+        min-height: 48px;
         width: 100%;
+      }
+
+      .task-name,
+      .task-trip-link {
+        white-space: normal;
       }
     }
   </style>

@@ -41,6 +41,10 @@
     }
 
     .trip-quick-edit-form {
+      align-items: center;
+      display: inline-grid;
+      gap: 6px;
+      grid-template-columns: minmax(118px, 1fr) auto;
       margin: 0;
     }
 
@@ -106,6 +110,34 @@
       .page-header-actions .button {
         justify-content: center;
         width: 100%;
+      }
+
+      .trip-list-shell {
+        gap: 14px;
+      }
+
+      .filter-toggle {
+        justify-content: center;
+        width: 100%;
+      }
+
+      .trip-quick-edit-form {
+        align-items: stretch;
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+
+      .trip-quick-edit-form select,
+      .trip-quick-edit-form .person-select,
+      .trip-quick-edit-form .status-select {
+        min-height: 48px;
+        min-width: 0;
+        width: 100%;
+      }
+
+      .trip-save-state {
+        min-height: 18px;
       }
     }
   </style>
