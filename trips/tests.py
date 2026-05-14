@@ -564,6 +564,28 @@ class TripListQuickUpdateTests(TestCase):
         self.assertEqual(self.trip.trip_manager, self.manager_employee)
         self.assertEqual(self.trip.trip_leader, self.host_employee)
 
+    def test_trip_list_quick_update_can_return_json_for_inline_save(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("trip_quick_update", args=[self.trip.pk]),
+            {
+                "trip_leader": self.second_host_employee.pk,
+                "trip_manager": self.manager_employee.pk,
+                "status": self.second_status.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["trip"]["status_id"], self.second_status.pk)
+        self.assertEqual(response.json()["trip"]["status_label"], self.second_status.name)
+        self.assertEqual(response.json()["trip"]["trip_leader"], str(self.second_host_employee))
+        self.assertEqual(response.json()["trip"]["trip_manager"], str(self.manager_employee))
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.status, self.second_status)
+        self.assertEqual(self.trip.trip_leader, self.second_host_employee)
+
 
 class TaskDashboardTests(TestCase):
     def setUp(self):
@@ -834,6 +856,28 @@ class TripDetailTaskManagementTests(TestCase):
         self.assertEqual(self.first_task.status, Task.Status.DONE)
         self.assertEqual(self.first_task.due_date, date(2026, 7, 20))
         self.assertIsNone(self.first_task.days_to_before_trip)
+
+    def test_task_list_quick_update_can_return_json_for_inline_save(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("task_quick_update", args=[self.first_task.pk]),
+            {
+                "assigned_to": self.second_employee.pk,
+                "status": Task.Status.IN_PROGRESS,
+                "due_date": "2026-07-20",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["task"]["status"], Task.Status.IN_PROGRESS)
+        self.assertEqual(response.json()["task"]["status_label"], "In Progress")
+        self.assertEqual(response.json()["task"]["assigned_to"], str(self.second_employee))
+        self.assertEqual(response.json()["task"]["due_date"], "2026-07-20")
+        self.first_task.refresh_from_db()
+        self.assertEqual(self.first_task.assigned_to, self.second_employee)
+        self.assertEqual(self.first_task.status, Task.Status.IN_PROGRESS)
 
     def test_trip_detail_can_bulk_update_task_statuses(self):
         self.client.force_login(self.user)
