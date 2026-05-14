@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Customer, CustomerDocument, CustomerTripHistory
+from .models import Customer, CustomerDocument, CustomerDocumentType, CustomerTripHistory
 
 
 class DateInput(forms.DateInput):
@@ -40,9 +40,15 @@ class CustomerCsvImportForm(forms.Form):
 
 
 class CustomerDocumentForm(forms.ModelForm):
+    document_type = forms.ModelChoiceField(
+        queryset=CustomerDocumentType.objects.filter(is_active=True),
+        empty_label="Select a document type",
+        required=False,
+    )
+
     class Meta:
         model = CustomerDocument
-        fields = ["title", "file", "notes"]
+        fields = ["document_type", "title", "file", "notes"]
         help_texts = {
             "file": "Accepted file types: PDF, JPG, PNG, GIF, or WebP.",
         }

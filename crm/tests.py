@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .forms import CustomerDocumentForm
-from .models import Customer, CustomerDocument, CustomerTripHistory
+from .models import Customer, CustomerDocument, CustomerDocumentType, CustomerTripHistory
 
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp()
@@ -35,6 +35,15 @@ class CustomerModelTests(TestCase):
 
 
 class CustomerDocumentFormTests(TestCase):
+    def test_document_type_choices_only_show_active_types(self):
+        active_type = CustomerDocumentType.objects.get(name="Passport")
+        inactive_type = CustomerDocumentType.objects.create(name="Retired", is_active=False)
+
+        form = CustomerDocumentForm()
+
+        self.assertIn(active_type, form.fields["document_type"].queryset)
+        self.assertNotIn(inactive_type, form.fields["document_type"].queryset)
+
     def test_rejects_unsupported_file_type(self):
         form = CustomerDocumentForm(
             data={"title": "Spreadsheet"},
@@ -122,10 +131,12 @@ class CustomerViewTests(TestCase):
             last_name="Stone",
             email="avery@example.com",
         )
+        document_type = CustomerDocumentType.objects.get(name="Passport")
 
         response = self.client.post(
             reverse("crm_customer_document_create", kwargs={"customer_pk": customer.pk}),
             {
+                "document_type": document_type.pk,
                 "title": "Passport",
                 "file": SimpleUploadedFile(
                     "passport.pdf",
@@ -138,6 +149,32 @@ class CustomerViewTests(TestCase):
         self.assertRedirects(response, customer.get_absolute_url())
         document = CustomerDocument.objects.get(customer=customer)
         self.assertEqual(document.title, "Passport")
+        self.assertEqual(document.document_type, document_type)
+
+    def test_customer_detail_lists_document_titles_without_inline_previews(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+        )
+        document_type = CustomerDocumentType.objects.get(name="Government ID")
+        document = CustomerDocument.objects.create(
+            customer=customer,
+            document_type=document_type,
+            title="Driver License",
+            file=SimpleUploadedFile("license.jpg", b"fake image", content_type="image/jpeg"),
+            notes="Front side",
+        )
+
+        response = self.client.get(customer.get_absolute_url())
+
+        self.assertContains(response, "Driver License")
+        self.assertContains(response, "Government ID")
+        self.assertContains(
+            response,
+            reverse("crm_customer_document_file", kwargs={"customer_pk": customer.pk, "pk": document.pk}),
+        )
+        self.assertNotContains(response, "<img")
 
     def test_customer_document_file_requires_authentication(self):
         customer = Customer.objects.create(

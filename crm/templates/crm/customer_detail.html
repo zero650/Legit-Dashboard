@@ -78,42 +78,8 @@
       line-height: 1;
     }
 
-    .document-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .document-card {
-      background: rgba(255, 255, 255, 0.62);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      display: grid;
-      gap: 10px;
-      padding: 14px;
-    }
-
-    .document-preview {
-      align-items: center;
-      aspect-ratio: 4 / 3;
-      background: var(--sun-soft);
-      border-radius: var(--radius-sm);
-      display: flex;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .document-preview img {
-      height: 100%;
-      object-fit: cover;
-      width: 100%;
-    }
-
-    .document-preview span {
-      color: var(--warn);
+    .document-title-link {
       font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
     }
 
     .document-meta {
@@ -296,6 +262,11 @@
       {% csrf_token %}
       {{ document_form.non_field_errors }}
       <div>
+        <label for="{{ document_form.document_type.id_for_label }}">Document type</label>
+        {{ document_form.document_type }}
+        {{ document_form.document_type.errors }}
+      </div>
+      <div>
         <label for="{{ document_form.title.id_for_label }}">Document title</label>
         {{ document_form.title }}
         {{ document_form.title.errors }}
@@ -314,29 +285,42 @@
       <button type="submit">Attach document</button>
     </form>
 
-    <div class="document-grid">
-      {% for document in customer.documents.all %}
-        <article class="document-card">
-          <a class="document-preview" href="{% url 'crm_customer_document_file' customer.pk document.pk %}" target="_blank" rel="noopener">
-            {% if document.is_image %}
-              <img src="{% url 'crm_customer_document_file' customer.pk document.pk %}" alt="{{ document.display_name }}">
-            {% else %}
-              <span>PDF</span>
-            {% endif %}
-          </a>
-          <div>
-            <strong><a href="{% url 'crm_customer_document_file' customer.pk document.pk %}" target="_blank" rel="noopener">{{ document.display_name }}</a></strong>
-            <div class="document-meta">Uploaded {{ document.uploaded_at }}</div>
-            {% if document.notes %}<p class="document-meta">{{ document.notes }}</p>{% endif %}
-          </div>
-          <form method="post" action="{% url 'crm_customer_document_delete' customer.pk document.pk %}">
-            {% csrf_token %}
-            <button class="button secondary danger-link" type="submit">Remove</button>
-          </form>
-        </article>
-      {% empty %}
-        <p class="empty-state">No documents attached yet.</p>
-      {% endfor %}
-    </div>
+    <table class="responsive-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Uploaded</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for document in customer.documents.all %}
+          <tr>
+            <td data-label="Title">
+              <a class="document-title-link" href="{% url 'crm_customer_document_file' customer.pk document.pk %}" target="_blank" rel="noopener">{{ document.display_name }}</a>
+            </td>
+            <td data-label="Type">{{ document.document_type|default:"-" }}</td>
+            <td data-label="Uploaded">{{ document.uploaded_at }}</td>
+            <td data-label="Notes">
+              {% if document.notes %}
+                <span class="document-meta">{{ document.notes }}</span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td data-label="Actions">
+              <form method="post" action="{% url 'crm_customer_document_delete' customer.pk document.pk %}">
+                {% csrf_token %}
+                <button class="button secondary danger-link" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty-state">No documents attached yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </section>
 {% endblock %}

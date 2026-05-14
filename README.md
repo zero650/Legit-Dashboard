@@ -16,7 +16,7 @@ The app has two top-level work areas: trip/task operations and CRM.
 - Django Groups presented as Roles for permission levels
 - Permission matrix admin page for updating role permissions with checkboxes
 - Starter permission groups through a seed command
-- CRM for customer profiles, passport details, trip history, spend tracking, notes, and attached PDFs/images
+- CRM for customer profiles, passport details, trip history, spend tracking, notes, standard document types, and attached PDFs/images
 
 ## Project Management Models
 
@@ -31,7 +31,8 @@ The app has two top-level work areas: trip/task operations and CRM.
 
 - `Customer`: first name, last name, email, phone number, address, city, state, postal code, passport number, passport expiration date, and notes
 - `CustomerTripHistory`: customer-linked trip name, trip start date, trip end date, and money spent
-- `CustomerDocument`: customer-linked PDF/image attachments with optional titles and notes
+- `CustomerDocumentType`: admin-editable list of standard document categories
+- `CustomerDocument`: customer-linked PDF/image attachments with optional document type, title, and notes
 
 ## Permissions Approach
 
@@ -81,7 +82,7 @@ For Cloudflare Tunnel testing, copy `.env.production.example` to `.env`, replace
 docker compose -f docker-compose.yml -f docker-compose.production.yml up --build -d
 ```
 
-This production overlay switches Django to `gunicorn`, removes the source-code bind mount, and exposes the origin only on `127.0.0.1:8080` for the local tunnel client. Point your Cloudflare Zero Trust Tunnel for `dashboard.jamesonbates.net` at `http://127.0.0.1:8080`.
+This production overlay switches Django to `gunicorn`, removes the source-code bind mount, and exposes the origin only on `127.0.0.1:8081` for the local tunnel client. Point your Cloudflare Zero Trust Tunnel for `dashboard.jamesonbates.net` at `http://127.0.0.1:8081`.
 
 Suggested Cloudflare Access posture:
 

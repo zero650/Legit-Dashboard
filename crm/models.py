@@ -48,6 +48,13 @@ class CustomerDocument(models.Model):
         on_delete=models.CASCADE,
         related_name="documents",
     )
+    document_type = models.ForeignKey(
+        "CustomerDocumentType",
+        on_delete=models.PROTECT,
+        related_name="documents",
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=160, blank=True)
     file = models.FileField(
         upload_to="crm/customer-documents/%Y/%m/",
@@ -73,6 +80,19 @@ class CustomerDocument(models.Model):
     @property
     def is_image(self):
         return self.file.name.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
+
+
+class CustomerDocumentType(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+    description = models.CharField(max_length=255, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
 
 
 class CustomerTripHistory(models.Model):

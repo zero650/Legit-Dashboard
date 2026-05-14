@@ -89,7 +89,7 @@ class CustomerDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
     permission_required = "crm.view_customer"
 
     def get_queryset(self):
-        return Customer.objects.prefetch_related("documents", "trip_history").annotate(
+        return Customer.objects.prefetch_related("documents__document_type", "trip_history").annotate(
             **trip_history_annotations()
         )
 

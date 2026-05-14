@@ -1,12 +1,12 @@
 from django.contrib import admin
 
-from .models import Customer, CustomerDocument, CustomerTripHistory
+from .models import Customer, CustomerDocument, CustomerDocumentType, CustomerTripHistory
 
 
 class CustomerDocumentInline(admin.TabularInline):
     model = CustomerDocument
     extra = 0
-    fields = ("title", "file", "notes", "uploaded_at")
+    fields = ("document_type", "title", "file", "notes", "uploaded_at")
     readonly_fields = ("uploaded_at",)
 
 
@@ -44,9 +44,23 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerDocument)
 class CustomerDocumentAdmin(admin.ModelAdmin):
-    list_display = ("display_name", "customer", "uploaded_at")
-    search_fields = ("title", "customer__first_name", "customer__last_name", "customer__email")
-    list_filter = ("uploaded_at",)
+    list_display = ("display_name", "document_type", "customer", "uploaded_at")
+    search_fields = (
+        "title",
+        "document_type__name",
+        "customer__first_name",
+        "customer__last_name",
+        "customer__email",
+    )
+    list_filter = ("document_type", "uploaded_at")
+
+
+@admin.register(CustomerDocumentType)
+class CustomerDocumentTypeAdmin(admin.ModelAdmin):
+    list_display = ("name", "sort_order", "is_active")
+    list_editable = ("sort_order", "is_active")
+    search_fields = ("name", "description")
+    list_filter = ("is_active",)
 
 
 @admin.register(CustomerTripHistory)
