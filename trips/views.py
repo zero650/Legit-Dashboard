@@ -127,6 +127,7 @@ class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
     def post(self, request, pk):
         trip = get_object_or_404(Trip, pk=pk)
+        wants_json = request.headers.get("x-requested-with") == "XMLHttpRequest"
         data = request.POST.copy()
         if "trip_leader" not in data:
             data["trip_leader"] = trip.trip_leader_id or ""
@@ -139,9 +140,34 @@ class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
         form = TripQuickUpdateForm(data, instance=trip)
         if not form.is_valid():
+            if wants_json:
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "errors": form.errors.get_json_data(),
+                    },
+                    status=400,
+                )
             messages.error(request, "Please choose a valid leader, manager, or status.")
         else:
-            form.save()
+            trip = form.save()
+            if wants_json:
+                leader_label = "No leader"
+                if trip.trip_leader:
+                    leader_label = trip.trip_leader.full_name or trip.trip_leader.email
+                manager_label = trip.trip_manager.full_name or trip.trip_manager.email
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "trip": {
+                            "id": trip.pk,
+                            "trip_leader": leader_label,
+                            "trip_manager": manager_label,
+                            "status_id": trip.status_id,
+                            "status_label": trip.status.name,
+                        },
+                    }
+                )
             messages.success(request, f"Updated {trip.name}.")
         return redirect(request.POST.get("next") or "trip_list")
 
@@ -294,10 +320,37 @@ class TaskQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
     def post(self, request, pk):
         task = get_object_or_404(Task, pk=pk)
         form = TaskQuickUpdateForm(request.POST, instance=task)
+        wants_json = request.headers.get("x-requested-with") == "XMLHttpRequest"
         if not form.is_valid():
+            if wants_json:
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "errors": form.errors.get_json_data(),
+                    },
+                    status=400,
+                )
             messages.error(request, "Please fix the task assignment, status, or due date and try again.")
         else:
-            form.save()
+            task = form.save()
+            if wants_json:
+                assignee_label = "Unassigned"
+                if task.assigned_to:
+                    assignee_label = task.assigned_to.full_name or task.assigned_to.email
+                due_date_label = task.due_date.strftime("%Y-%m-%d") if task.due_date else ""
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "task": {
+                            "id": task.pk,
+                            "assigned_to": assignee_label,
+                            "status": task.status,
+                            "status_label": task.get_status_display(),
+                            "due_date": due_date_label,
+                            "due_in_display": task.due_in_display,
+                        },
+                    }
+                )
             messages.success(request, f"Updated {task.name}.")
         return redirect(request.POST.get("next") or "task_list")
 

@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from trips.models import Employee
 
 from .forms import EmailUserChangeForm, EmailUserCreationForm
-from .models import StaffEmployee, User
+from .models import User
 
 
 class EmployeeInline(admin.StackedInline):
@@ -48,11 +48,3 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
-
-
-@admin.register(StaffEmployee)
-class StaffEmployeeAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "email", "role_names")
-    list_filter = ("roles",)
-    search_fields = ("user__first_name", "user__last_name", "user__email")
-    filter_horizontal = ("roles",)

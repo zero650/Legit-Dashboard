@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
 from trips.models import Employee, Task, TaskTemplate, Trip, TripStatus
 
@@ -37,6 +37,49 @@ class WorkTasksAdminTests(TestCase):
 
         self.assertContains(response, reverse("admin:work_tasks_worktask_import_csv"))
         self.assertContains(response, "Import CSV")
+
+    def test_admin_task_changelist_uses_compact_summary_columns(self):
+        user = get_user_model().objects.create_superuser(
+            email="admin-compact@example.com",
+            password="password",
+        )
+        trip_owner = Employee.objects.create(
+            user=get_user_model().objects.create_user(email="manager-compact@example.com")
+        )
+        assignee_user = get_user_model().objects.create_user(
+            email="assignee@example.com",
+            first_name="Ava",
+            last_name="Stone",
+        )
+        assignee = Employee.objects.create(user=assignee_user)
+        status = TripStatus.objects.create(name="Confirmed")
+        trip = Trip.objects.create(
+            name="Barcelona 2026",
+            start_date="2026-09-10",
+            end_date="2026-09-18",
+            trip_manager=trip_owner,
+            status=status,
+        )
+        Task.objects.create(
+            name="Confirm rooming list",
+            trip=trip,
+            assigned_to=assignee,
+            status=Task.Status.IN_PROGRESS,
+            due_date="2026-08-15",
+            notes="Reach out to the hotel and verify the final room split before payment.",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("admin:work_tasks_worktask_changelist"))
+
+        self.assertContains(response, "field-task_summary")
+        self.assertContains(response, "field-assigned_summary")
+        self.assertContains(response, "field-status_summary")
+        self.assertContains(response, "field-due_summary")
+        self.assertContains(response, "Trip: Barcelona 2026")
+        self.assertContains(response, "Ava Stone")
+        self.assertContains(response, "In Progress")
+        self.assertNotContains(response, "field-source_template")
 
     def test_admin_can_import_tasks_from_csv(self):
         user = get_user_model().objects.create_superuser(

@@ -1,5 +1,115 @@
 {% extends "admin/change_list.html" %}
 
+{% block extrahead %}
+  {{ block.super }}
+  <style>
+    #result_list {
+      table-layout: fixed;
+    }
+
+    #result_list th,
+    #result_list td {
+      vertical-align: middle;
+    }
+
+    #result_list th.column-task_summary,
+    #result_list td.field-task_summary {
+      width: 58%;
+    }
+
+    #result_list th.column-assigned_summary,
+    #result_list td.field-assigned_summary {
+      width: 16%;
+      white-space: nowrap;
+    }
+
+    #result_list th.column-status_summary,
+    #result_list td.field-status_summary {
+      width: 12%;
+      white-space: nowrap;
+    }
+
+    #result_list th.column-due_summary,
+    #result_list td.field-due_summary {
+      width: 14%;
+      white-space: nowrap;
+    }
+
+    .task-row-summary {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .task-row-title {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-row-meta {
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-row-assignee {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-row-due {
+      display: grid;
+      gap: 2px;
+      line-height: 1.25;
+    }
+
+    .task-row-due strong,
+    .task-row-due span {
+      white-space: nowrap;
+    }
+
+    .task-row-due span {
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .task-status-badge {
+      border-radius: 999px;
+      display: inline-flex;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    .task-status-not_started {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .task-status-in_progress {
+      background: #fff3cd;
+      color: #8a5a00;
+    }
+
+    .task-status-done {
+      background: #dcfce7;
+      color: #166534;
+    }
+  </style>
+{% endblock %}
+
 {% block object-tools-items %}
   <li>
     <a href="{% url 'admin:work_tasks_worktask_import_csv' %}">Import CSV</a>

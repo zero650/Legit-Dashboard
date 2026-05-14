@@ -33,35 +33,129 @@
 
     .task-quick-edit-form {
       align-items: center;
-      display: inline-flex;
-      flex-wrap: wrap;
-      gap: 6px;
+      display: inline-grid;
+      gap: 4px;
+      grid-template-columns: minmax(136px, 1.1fr) minmax(88px, 0.64fr) minmax(112px, 0.72fr);
       margin: 0;
+      position: relative;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    .task-table {
+      table-layout: fixed;
+    }
+
+    .task-table th,
+    .task-table td {
+      vertical-align: middle;
+    }
+
+    .task-table th:nth-child(1),
+    .task-table td:nth-child(1) {
+      width: 24%;
+    }
+
+    .task-table th:nth-child(2),
+    .task-table td:nth-child(2) {
+      width: 18%;
+    }
+
+    .task-table th:nth-child(3),
+    .task-table td:nth-child(3) {
+      width: 33%;
+    }
+
+    .task-table th:nth-child(4),
+    .task-table td:nth-child(4) {
+      width: 15%;
+      white-space: nowrap;
+    }
+
+    .task-table th:nth-child(5),
+    .task-table td:nth-child(5) {
+      width: 10%;
+      white-space: nowrap;
+    }
+
+    .task-table td:nth-child(3),
+    .task-table td:nth-child(4),
+    .task-table td:nth-child(5) {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .task-name,
+    .task-trip-link {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .task-name {
+      white-space: nowrap;
+    }
+
+    .task-trip-link {
+      line-height: 1.3;
     }
 
     .task-quick-edit-form select,
     .task-quick-edit-form input[type="date"] {
+      font-size: 13px;
       min-width: 0;
       min-height: 34px;
-      padding: 6px 8px;
-      width: auto;
+      padding: 6px 10px;
+      width: 100%;
     }
 
     .task-quick-edit-form .assignee-select {
-      min-width: 138px;
+      min-width: 136px;
     }
 
     .task-quick-edit-form .status-select {
-      min-width: 116px;
+      min-width: 88px;
     }
 
     .task-quick-edit-form input[type="date"] {
-      min-width: 128px;
+      min-width: 112px;
     }
 
     .task-quick-edit-form.is-submitting {
       opacity: 0.65;
       pointer-events: none;
+    }
+
+    .task-save-state {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      left: 0;
+      min-width: 0;
+      position: absolute;
+      top: calc(100% + 4px);
+    }
+
+    .task-save-state[data-tone="success"] {
+      color: var(--accent-dark);
+    }
+
+    .task-save-state[data-tone="error"] {
+      color: #a33b2f;
+    }
+
+    .task-save-state[data-tone="muted"] {
+      color: var(--muted);
+    }
+
+    tr.save-success td {
+      background: rgba(46, 91, 87, 0.06);
+      transition: background 180ms ease;
+    }
+
+    tr.save-error td {
+      background: rgba(169, 68, 66, 0.08);
+      transition: background 180ms ease;
     }
 
     .task-list-shell {
@@ -77,10 +171,21 @@
     }
 
     @media (max-width: 680px) {
+      .task-table {
+        table-layout: auto;
+      }
+
       .task-quick-edit-form {
         align-items: stretch;
         display: flex;
+        grid-template-columns: none;
+        position: static;
         width: 100%;
+        white-space: normal;
+      }
+
+      .task-save-state {
+        position: static;
       }
 
       .task-quick-edit-form select,
@@ -160,7 +265,7 @@
       </div>
       <p class="table-intro">Fast inline updates for assignee, status, and due date, wrapped in a presentation that feels less like a back office spreadsheet.</p>
     </div>
-    <table class="responsive-table">
+    <table class="responsive-table task-table">
       <thead>
         <tr>
           <th>Task</th>
@@ -172,11 +277,11 @@
       </thead>
       <tbody>
         {% for task in tasks %}
-          <tr>
-            <td data-label="Task">{{ task.name }}</td>
-            <td data-label="Trip"><a href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a></td>
+          <tr data-task-row="{{ task.pk }}">
+            <td data-label="Task"><span class="task-name">{{ task.name }}</span></td>
+            <td data-label="Trip"><a class="task-trip-link" href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a></td>
             <td data-label="Assigned to / Status / Due">
-              <form method="post" action="{% url 'task_quick_update' task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
+              <form method="post" action="{% url 'task_quick_update' task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true" data-task-id="{{ task.pk }}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'task_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
                 <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
@@ -200,9 +305,10 @@
                   aria-label="Due date for {{ task.name }}"
                   value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
                 >
+                <span class="task-save-state" aria-live="polite"></span>
               </form>
             </td>
-            <td data-label="Due in">{{ task.due_in_display }}</td>
+            <td data-label="Due in" data-due-in-display>{{ task.due_in_display }}</td>
             <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
           </tr>
         {% empty %}
@@ -224,14 +330,68 @@
     });
 
     document.querySelectorAll(".task-quick-edit-form").forEach((form) => {
-      form.querySelectorAll("select, input[type='date']").forEach((field) => {
-        field.addEventListener("change", () => {
-          if (form.classList.contains("is-submitting")) {
-            return;
-          }
-          form.classList.add("is-submitting");
-          form.requestSubmit();
+      const fields = form.querySelectorAll("select, input[type='date']");
+      const saveState = form.querySelector(".task-save-state");
+      const row = form.closest("tr");
+      const dueInCell = row?.querySelector("[data-due-in-display]");
+
+      const setSaveState = (message, tone = "") => {
+        if (!saveState) {
+          return;
+        }
+        saveState.textContent = message;
+        saveState.dataset.tone = tone;
+      };
+
+      const setSubmitting = (isSubmitting) => {
+        form.classList.toggle("is-submitting", isSubmitting);
+        fields.forEach((field) => {
+          field.disabled = isSubmitting;
         });
+      };
+
+      const submitQuickUpdate = async () => {
+        if (form.classList.contains("is-submitting")) {
+          return;
+        }
+
+        const formData = new FormData(form);
+        setSubmitting(true);
+        setSaveState("Saving...", "muted");
+
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+            },
+          });
+
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error("Unable to save task.");
+          }
+
+          if (dueInCell) {
+            dueInCell.textContent = payload.task.due_in_display;
+          }
+          row?.classList.remove("save-error");
+          row?.classList.add("save-success");
+          window.setTimeout(() => row?.classList.remove("save-success"), 1200);
+          setSaveState("Saved", "success");
+          window.setTimeout(() => setSaveState(""), 1200);
+        } catch (error) {
+          row?.classList.add("save-error");
+          setSaveState("Could not save. Refresh and try again.", "error");
+          window.setTimeout(() => row?.classList.remove("save-error"), 1800);
+        } finally {
+          setSubmitting(false);
+        }
+      };
+
+      fields.forEach((field) => {
+        field.addEventListener("change", submitQuickUpdate);
       });
     });
   </script>

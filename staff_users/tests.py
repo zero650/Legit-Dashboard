@@ -14,7 +14,7 @@ class StaffUsersAdminTests(TestCase):
         self.assertEqual(user.get_username(), "staff@example.com")
         self.assertNotIn("username", [field.name for field in user._meta.fields])
 
-    def test_admin_groups_employees_and_users_under_users_app(self):
+    def test_admin_groups_only_users_under_users_app(self):
         request = RequestFactory().get("/admin/")
         request.user = get_user_model().objects.create_superuser(
             email="admin@example.com",
@@ -27,10 +27,7 @@ class StaffUsersAdminTests(TestCase):
             if app["name"] == "Users"
         )
 
-        self.assertEqual(
-            [model["name"] for model in users_app["models"]],
-            ["Employees", "Users"],
-        )
+        self.assertEqual([model["name"] for model in users_app["models"]], ["Users"])
 
     def test_admin_add_user_form_uses_email_field(self):
         self.client.force_login(

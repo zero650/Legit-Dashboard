@@ -64,6 +64,31 @@
       pointer-events: none;
     }
 
+    .trip-save-state {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 48px;
+    }
+
+    .trip-save-state[data-tone="success"] {
+      color: var(--accent-dark);
+    }
+
+    .trip-save-state[data-tone="error"] {
+      color: #a33b2f;
+    }
+
+    tr.save-success td {
+      background: rgba(46, 91, 87, 0.06);
+      transition: background 180ms ease;
+    }
+
+    tr.save-error td {
+      background: rgba(169, 68, 66, 0.08);
+      transition: background 180ms ease;
+    }
+
     .trip-list-shell {
       display: grid;
       gap: 18px;
@@ -179,12 +204,12 @@
       </thead>
       <tbody>
         {% for trip in trips %}
-          <tr>
+          <tr data-trip-row="{{ trip.pk }}">
             <td data-label="Name"><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></td>
             <td data-label="Dates">{{ trip.start_date }} - {{ trip.end_date }}</td>
             <td data-label="Open Tasks">{{ trip.open_tasks }}</td>
             <td data-label="Leader">
-              <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true">
+              <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true" data-trip-id="{{ trip.pk }}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'trip_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
                 <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
@@ -197,10 +222,11 @@
                     </option>
                   {% endfor %}
                 </select>
+                <span class="trip-save-state" aria-live="polite"></span>
               </form>
             </td>
             <td data-label="Manager">
-              <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true">
+              <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true" data-trip-id="{{ trip.pk }}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'trip_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
                 <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
@@ -212,10 +238,11 @@
                     </option>
                   {% endfor %}
                 </select>
+                <span class="trip-save-state" aria-live="polite"></span>
               </form>
             </td>
             <td data-label="Status">
-              <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true">
+              <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-quick-edit-form" data-preserve-scroll="true" data-trip-id="{{ trip.pk }}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'trip_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
                 <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
@@ -227,6 +254,7 @@
                     </option>
                   {% endfor %}
                 </select>
+                <span class="trip-save-state" aria-live="polite"></span>
               </form>
             </td>
           </tr>
@@ -249,12 +277,54 @@
 
     document.querySelectorAll(".trip-quick-edit-form").forEach((form) => {
       const field = form.querySelector("select");
-      field?.addEventListener("change", () => {
+      const saveState = form.querySelector(".trip-save-state");
+      const row = form.closest("tr");
+
+      const setSaveState = (message, tone = "") => {
+        if (!saveState) {
+          return;
+        }
+        saveState.textContent = message;
+        saveState.dataset.tone = tone;
+      };
+
+      field?.addEventListener("change", async () => {
         if (form.classList.contains("is-submitting")) {
           return;
         }
+
+        const formData = new FormData(form);
         form.classList.add("is-submitting");
-        form.requestSubmit();
+        field.disabled = true;
+        setSaveState("Saving...", "muted");
+
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+            },
+          });
+
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error("Unable to save trip.");
+          }
+
+          row?.classList.remove("save-error");
+          row?.classList.add("save-success");
+          window.setTimeout(() => row?.classList.remove("save-success"), 1200);
+          setSaveState("Saved", "success");
+          window.setTimeout(() => setSaveState(""), 1200);
+        } catch (error) {
+          row?.classList.add("save-error");
+          setSaveState("Could not save. Refresh and try again.", "error");
+          window.setTimeout(() => row?.classList.remove("save-error"), 1800);
+        } finally {
+          field.disabled = false;
+          form.classList.remove("is-submitting");
+        }
       });
     });
   </script>

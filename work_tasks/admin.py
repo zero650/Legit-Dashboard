@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.utils.html import format_html
 from django.urls import path, reverse
 from django.utils.dateparse import parse_date
 
@@ -34,11 +35,65 @@ class TaskTemplateCsvImportForm(forms.Form):
 
 @admin.register(WorkTask)
 class WorkTaskAdmin(admin.ModelAdmin):
-    list_display = ("name", "trip", "source_template", "assigned_to", "status", "due_date")
+    list_display = ("task_summary", "assigned_summary", "status_summary", "due_summary")
     list_filter = ("status", "assigned_to", "trip__status", "source_template")
     search_fields = ("name", "notes", "assigned_to__user__email")
     autocomplete_fields = ("trip",)
     change_list_template = "admin/work_tasks/worktask/change_list.html"
+    list_select_related = ("trip", "trip__status", "assigned_to__user", "source_template")
+
+    @admin.display(description="Task", ordering="name")
+    def task_summary(self, obj):
+        trip_status = getattr(obj.trip.status, "name", "No trip status")
+        template_name = obj.source_template.name if obj.source_template else "Custom"
+        note_preview = (obj.notes or "").strip()
+        if len(note_preview) > 90:
+            note_preview = f"{note_preview[:87].rstrip()}..."
+        if not note_preview:
+            note_preview = "No notes"
+        return format_html(
+            '<div class="task-row-summary">'
+            '<strong class="task-row-title">{}</strong>'
+            '<span class="task-row-meta">Trip: {} | Trip status: {} | Template: {} | {}</span>'
+            "</div>",
+            obj.name,
+            obj.trip.name,
+            trip_status,
+            template_name,
+            note_preview,
+        )
+
+    @admin.display(description="Assigned", ordering="assigned_to__user__last_name")
+    def assigned_summary(self, obj):
+        if not obj.assigned_to:
+            return "Unassigned"
+
+        display_name = obj.assigned_to.full_name or obj.assigned_to.email
+        return format_html(
+            '<span class="task-row-assignee">{}</span>',
+            display_name,
+        )
+
+    @admin.display(description="Status", ordering="status")
+    def status_summary(self, obj):
+        return format_html(
+            '<span class="task-status-badge task-status-{}">{}</span>',
+            obj.status,
+            obj.get_status_display(),
+        )
+
+    @admin.display(description="Due", ordering="due_date")
+    def due_summary(self, obj):
+        if obj.due_date:
+            return format_html(
+                '<div class="task-row-due"><strong>{}</strong><span>{}</span></div>',
+                obj.due_date.strftime("%b %d, %Y"),
+                obj.due_in_display,
+            )
+        return format_html(
+            '<div class="task-row-due"><strong>No due date</strong><span>{}</span></div>',
+            obj.due_in_display,
+        )
 
     def get_urls(self):
         urls = super().get_urls()
