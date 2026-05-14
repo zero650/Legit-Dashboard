@@ -9,6 +9,7 @@ from .views import (
     CustomerDocumentDeleteView,
     CustomerDocumentServeView,
     CustomerListView,
+    CustomerNotesUpdateView,
     CustomerTripHistoryCreateView,
     CustomerTripHistoryDeleteView,
     CustomerUpdateView,
@@ -21,6 +22,7 @@ urlpatterns = [
     path("customers/import/", CustomerCsvImportView.as_view(), name="crm_customer_import"),
     path("customers/<int:pk>/", CustomerDetailView.as_view(), name="crm_customer_detail"),
     path("customers/<int:pk>/edit/", CustomerUpdateView.as_view(), name="crm_customer_update"),
+    path("customers/<int:pk>/notes/", CustomerNotesUpdateView.as_view(), name="crm_customer_notes_update"),
     path("customers/<int:pk>/delete/", CustomerDeleteView.as_view(), name="crm_customer_delete"),
     path(
         "customers/<int:customer_pk>/documents/",

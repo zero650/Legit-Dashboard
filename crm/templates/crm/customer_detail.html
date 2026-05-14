@@ -48,6 +48,20 @@
       margin-bottom: 18px;
     }
 
+    .customer-notes-form {
+      margin: 0;
+    }
+
+    .customer-notes-form.is-submitting {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .customer-notes-textarea {
+      min-height: 220px;
+      resize: vertical;
+    }
+
     .trip-history-form {
       align-items: end;
       display: grid;
@@ -157,7 +171,20 @@
     <div class="panel">
       <p class="page-kicker">Notes</p>
       <h2>Internal notes</h2>
-      <p>{{ customer.notes|linebreaksbr|default:"No notes yet." }}</p>
+      <form
+        method="post"
+        action="{% url 'crm_customer_notes_update' customer.pk %}"
+        class="customer-notes-form"
+        data-preserve-scroll="true"
+      >
+        {% csrf_token %}
+        <textarea
+          name="notes"
+          class="customer-notes-textarea"
+          aria-label="Notes for {{ customer.full_name }}"
+          placeholder="Add customer notes here"
+        >{{ customer.notes }}</textarea>
+      </form>
     </div>
   </section>
 
@@ -323,4 +350,26 @@
       </tbody>
     </table>
   </section>
+
+  <script>
+    document.querySelectorAll(".customer-notes-form").forEach((form) => {
+      const field = form.querySelector("textarea");
+      if (!field) {
+        return;
+      }
+      let lastSubmittedValue = field.value;
+
+      field.addEventListener("blur", () => {
+        if (form.classList.contains("is-submitting")) {
+          return;
+        }
+        if (field.value === lastSubmittedValue) {
+          return;
+        }
+        form.classList.add("is-submitting");
+        lastSubmittedValue = field.value;
+        form.requestSubmit();
+      });
+    });
+  </script>
 {% endblock %}

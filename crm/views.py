@@ -255,6 +255,17 @@ class CustomerUpdateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredM
     permission_required = "crm.change_customer"
 
 
+class CustomerNotesUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "crm.change_customer"
+
+    def post(self, request, pk):
+        customer = get_object_or_404(Customer, pk=pk)
+        customer.notes = request.POST.get("notes", "")
+        customer.save(update_fields=["notes", "updated_at"])
+        messages.success(request, f"Updated notes for {customer.full_name}.")
+        return redirect(customer)
+
+
 class CustomerDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Customer
     template_name = "crm/customer_confirm_delete.html"
