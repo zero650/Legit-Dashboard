@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.core.exceptions import ValidationError
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.dateparse import parse_date
 from django.urls import reverse_lazy
@@ -312,8 +312,13 @@ class CustomerDocumentServeView(LoginRequiredMixin, PermissionRequiredMixin, Vie
         customer = get_object_or_404(Customer, pk=customer_pk)
         document = get_object_or_404(CustomerDocument, pk=pk, customer=customer)
         content_type, _ = mimetypes.guess_type(document.file.name)
+        try:
+            file_handle = document.file.open("rb")
+        except FileNotFoundError as exc:
+            raise Http404("Document file not found.") from exc
+
         response = FileResponse(
-            document.file.open("rb"),
+            file_handle,
             as_attachment=False,
             filename=document.display_name,
             content_type=content_type or "application/octet-stream",
