@@ -70,8 +70,8 @@ class CustomerViewTests(TestCase):
         permissions = Permission.objects.filter(
             codename__in=[
                 "view_customer",
-                "add_customer",
                 "change_customer",
+                "add_customer",
                 "add_customerdocument",
                 "delete_customerdocument",
                 "add_customertriphistory",
@@ -176,6 +176,40 @@ class CustomerViewTests(TestCase):
         )
         self.assertNotContains(response, "<img")
 
+    def test_customer_detail_renders_inline_notes_form(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+            notes="Prefers aisle seats.",
+        )
+
+        response = self.client.get(customer.get_absolute_url())
+
+        self.assertContains(
+            response,
+            reverse("crm_customer_notes_update", kwargs={"pk": customer.pk}),
+        )
+        self.assertContains(response, 'class="customer-notes-textarea"')
+        self.assertContains(response, "Prefers aisle seats.")
+
+    def test_can_update_customer_notes_without_full_customer_edit(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+            notes="Old note",
+        )
+
+        response = self.client.post(
+            reverse("crm_customer_notes_update", kwargs={"pk": customer.pk}),
+            {"notes": "Updated note\nSecond line"},
+        )
+
+        self.assertRedirects(response, customer.get_absolute_url())
+        customer.refresh_from_db()
+        self.assertEqual(customer.notes, "Updated note\nSecond line")
+
     def test_customer_document_file_requires_authentication(self):
         customer = Customer.objects.create(
             first_name="Avery",
@@ -236,6 +270,25 @@ class CustomerViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
+    def test_customer_document_file_returns_404_when_storage_file_is_missing(self):
+        customer = Customer.objects.create(
+            first_name="Avery",
+            last_name="Stone",
+            email="avery@example.com",
+        )
+        document = CustomerDocument.objects.create(
+            customer=customer,
+            title="Passport",
+            file=SimpleUploadedFile("passport.pdf", b"%PDF-1.4", content_type="application/pdf"),
+        )
+        document.file.delete(save=False)
+
+        response = self.client.get(
+            reverse("crm_customer_document_file", kwargs={"customer_pk": customer.pk, "pk": document.pk})
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_can_add_customer_trip_history(self):
         customer = Customer.objects.create(

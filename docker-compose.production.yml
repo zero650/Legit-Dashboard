@@ -1,10 +1,11 @@
 services:
   web:
     command: gunicorn legit_dashboard.wsgi:application --bind 0.0.0.0:8000 --workers 3
-    volumes: []
+    volumes: !override
+      - ./media:/app/media
 
   caddy:
-    ports:
+    ports: !override
       - "127.0.0.1:8081:80"
     volumes:
       - ./docker/Caddyfile.production:/etc/caddy/Caddyfile:ro
