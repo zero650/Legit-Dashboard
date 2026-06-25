@@ -84,6 +84,8 @@ docker compose -f docker-compose.yml -f docker-compose.production.yml up --build
 
 This production overlay switches Django to `gunicorn`, removes the source-code bind mount, and exposes the origin only on `127.0.0.1:8081` for the local tunnel client. Point your Cloudflare Zero Trust Tunnel for `dashboard.jamesonbates.net` at `http://127.0.0.1:8081`.
 
+On a production host that already has another proxy on ports 80 and 443, such as Nginx Proxy Manager, do not run plain `docker compose up`; that uses the local development ports and will fail with `Bind for 0.0.0.0:80 failed: port is already allocated`. Use the production overlay command above. If the front proxy runs in Docker and needs to reach the origin through the host, set `ORIGIN_BIND=0.0.0.0` and proxy to `http://<docker-host-ip>:8081`, or put both stacks on a shared Docker network and proxy directly to this stack's Caddy service.
+
 Suggested Cloudflare Access posture:
 
 - Require your email address or identity provider group
