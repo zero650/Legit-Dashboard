@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.db.models.signals import post_delete
@@ -43,6 +44,7 @@ class Customer(models.Model):
 
 
 class CustomerDocument(models.Model):
+    max_file_size = 10 * 1024 * 1024
     customer = models.ForeignKey(
         Customer,
         on_delete=models.CASCADE,
@@ -72,6 +74,29 @@ class CustomerDocument(models.Model):
 
     def __str__(self):
         return self.display_name
+
+    def clean(self):
+        super().clean()
+        if not self.file:
+            return
+        if self.file.size > self.max_file_size:
+            raise ValidationError({"file": "The file must be 10 MB or smaller."})
+
+        header = self.file.read(12)
+        self.file.seek(0)
+        extension = self.file.name.rsplit(".", 1)[-1].lower()
+        signature_matches = {
+            "pdf": header.startswith(b"%PDF-"),
+            "jpg": header.startswith(b"\xff\xd8\xff"),
+            "jpeg": header.startswith(b"\xff\xd8\xff"),
+            "png": header.startswith(b"\x89PNG\r\n\x1a\n"),
+            "gif": header.startswith((b"GIF87a", b"GIF89a")),
+            "webp": header.startswith(b"RIFF") and header[8:12] == b"WEBP",
+        }
+        if not signature_matches.get(extension, False):
+            raise ValidationError(
+                {"file": "The file contents do not match a supported PDF or image format."}
+            )
 
     @property
     def display_name(self):

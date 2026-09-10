@@ -50,9 +50,8 @@ class CustomerDocumentForm(forms.ModelForm):
         model = CustomerDocument
         fields = ["document_type", "title", "file", "notes"]
         help_texts = {
-            "file": "Accepted file types: PDF, JPG, PNG, GIF, or WebP.",
+            "file": "Accepted file types: PDF, JPG, PNG, GIF, or WebP, up to 10 MB.",
         }
-
 
 class CustomerTripHistoryForm(forms.ModelForm):
     class Meta:

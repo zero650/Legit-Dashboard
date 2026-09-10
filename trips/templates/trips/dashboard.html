@@ -7,25 +7,25 @@
     <div class="hero-copy">
       <p class="page-kicker">Daily operations</p>
       <h1>Dashboard</h1>
-      <p class="eyebrow">A clean overview of running trips, open task work, and the customers traveling with Legit Trips most often.</p>
+      <p class="eyebrow">Upcoming departures and work to follow up on.</p>
     </div>
   </section>
 
-  <section class="grid" aria-label="Dashboard metrics">
+  <section class="grid dashboard-metrics" aria-label="Dashboard metrics">
     <div class="panel metric">
-      <span class="metric-label">Trips in motion</span>
+      <span class="metric-label">Total trips</span>
       <strong>{{ trip_count }}</strong>
-      <span class="metric-note">Every itinerary, launch, and departure organized in one place.</span>
+      <span class="metric-note">All recorded trips</span>
     </div>
-    <div class="panel metric">
+    {% if can_view_tasks %}<div class="panel metric">
       <span class="metric-label">Open tasks</span>
       <strong>{{ open_task_count }}</strong>
-      <span class="metric-note">Outstanding operational details still needing attention.</span>
-    </div>
+      <span class="metric-note">Across all trips</span>
+    </div>{% endif %}
     <div class="panel metric">
-      <span class="metric-label">Currently running trips</span>
+      <span class="metric-label">Traveling now</span>
       <strong>{{ running_trip_count }}</strong>
-      <span class="metric-note">Trips that are active right now and need a close eye.</span>
+      <span class="metric-note">Trips currently underway</span>
     </div>
   </section>
 
@@ -35,7 +35,7 @@
         <p class="page-kicker">Trip board</p>
         <h2>Running and upcoming trips</h2>
       </div>
-      <p class="table-intro">A clear read on what is launching next, who is running it, and where the remaining work is hiding.</p>
+      <p class="table-intro">Departure dates, owners, and remaining tasks.</p>
     </div>
     <table class="responsive-table">
       <thead>
@@ -54,22 +54,22 @@
             <td data-label="Dates">{{ trip.start_date }} - {{ trip.end_date }}</td>
             <td data-label="Manager">{{ trip.trip_manager }}</td>
             <td data-label="Status"><span class="status">{{ trip.status }}</span></td>
-            <td data-label="Open tasks">{{ trip.open_tasks }}<br><a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a></td>
+            <td data-label="Open tasks">{{ trip.open_tasks }}{% if perms.trips.add_task %}<br><a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>{% endif %}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="5" class="empty-state">No trips yet.</td></tr>
+          <tr><td colspan="5" class="empty-state">No running or upcoming trips.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </section>
 
-  <section class="table-card" style="margin-top:18px">
+  {% if can_view_tasks %}<section class="table-card" style="margin-top:18px">
     <div class="table-header">
       <div>
-        <p class="page-kicker">Open loops</p>
+        <p class="page-kicker">Tasks</p>
         <h2>Open tasks</h2>
       </div>
-      <p class="table-intro">Cross-team follow-through that still needs to be assigned, updated, or wrapped before a trip goes out smoothly.</p>
+      <p class="table-intro">Ordered by due date.</p>
     </div>
     <table class="responsive-table">
       <thead>
@@ -87,7 +87,7 @@
             <td data-label="Task"><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
             <td data-label="Trip"><a href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a></td>
             <td data-label="Assigned to">{{ task.assigned_to|default:"Unassigned" }}</td>
-            <td data-label="Status"><span class="status warn">{{ task.get_status_display }}</span></td>
+            <td data-label="Status"><span class="status">{{ task.get_status_display }}</span></td>
             <td data-label="Due">{{ task.due_date|default:"No due date" }}</td>
           </tr>
         {% empty %}
@@ -95,9 +95,9 @@
         {% endfor %}
       </tbody>
     </table>
-  </section>
+  </section>{% endif %}
 
-  <section class="table-card" style="margin-top:18px">
+  {% if can_view_crm %}<section class="table-card" style="margin-top:18px">
     <div class="table-header">
       <div>
         <p class="page-kicker">CRM snapshot</p>
@@ -125,5 +125,5 @@
         {% endfor %}
       </tbody>
     </table>
-  </section>
+  </section>{% endif %}
 {% endblock %}

@@ -63,14 +63,13 @@ Docker runs Caddy in front of Django so local traffic goes through HTTPS. The lo
 
 To test from an iPhone on the same Wi-Fi network, set `SITE_HOST` and `DJANGO_ALLOWED_HOSTS` to your Mac's local network name or LAN IP, then open the HTTPS URL for that host.
 
-The development container creates a starter admin user automatically:
+Create the first administrator explicitly so that a shared default password is never used:
 
-```text
-Email: admin@example.com
-Password: admin
+```bash
+docker compose exec web python manage.py createsuperuser
 ```
 
-The default compose file is for local development only. It reads its settings from `.env`, keeps the source tree bind-mounted, and can optionally create a local superuser when `DJANGO_CREATE_SUPERUSER=1`.
+The default compose file is for local development only. It reads its settings from `.env`, keeps the source tree bind-mounted, and can optionally bootstrap a superuser when `DJANGO_CREATE_SUPERUSER=1`. Bootstrap only runs when no superuser exists; disable it again after first use.
 
 On startup, the web container waits for PostgreSQL, runs migrations, seeds the default statuses and permission groups, collects static files, and starts Django.
 
@@ -83,6 +82,8 @@ docker compose -f docker-compose.yml -f docker-compose.production.yml up --build
 ```
 
 This production overlay switches Django to `gunicorn`, removes the source-code bind mount, and exposes the origin only on `127.0.0.1:8081` for the local tunnel client. Point your Cloudflare Zero Trust Tunnel for `dashboard.jamesonbates.net` at `http://127.0.0.1:8081`.
+
+On a production host that already has another proxy on ports 80 and 443, such as Nginx Proxy Manager, do not run plain `docker compose up`; that uses the local development ports and will fail with `Bind for 0.0.0.0:80 failed: port is already allocated`. Use the production overlay command above. If the front proxy runs in Docker and needs to reach the origin through the host, set `ORIGIN_BIND=0.0.0.0` and proxy to `http://<docker-host-ip>:8081`, or put both stacks on a shared Docker network and proxy directly to this stack's Caddy service.
 
 Suggested Cloudflare Access posture:
 
@@ -120,6 +121,8 @@ docker compose down -v
 ```
 
 Use `docker compose down -v` only when you want to delete the local PostgreSQL data volume.
+
+See [docs/operations.md](docs/operations.md) for health checks, backup, restore, and credential-rotation guidance.
 
 ## Manual Local Setup
 
