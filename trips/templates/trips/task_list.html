@@ -262,6 +262,17 @@
     </button>
     <form method="get" class="filter-grid filter-panel" id="task-filters"{% if not filters_active %} hidden{% endif %}>
       <div>
+        <label for="trip">Trip</label>
+        <select id="trip" name="trip">
+          <option value="">All trips</option>
+          {% for trip in trips %}
+            <option value="{{ trip.pk }}"{% if filters.trip == trip.pk|stringformat:'s' %} selected{% endif %}>
+              {{ trip.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
         <label for="assigned_to">Assigned to</label>
         <select id="assigned_to" name="assigned_to">
           <option value="">All assignees</option>

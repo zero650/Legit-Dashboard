@@ -665,6 +665,13 @@ class TaskDashboardTests(TestCase):
             trip_manager=self.employee,
             status=self.status,
         )
+        self.other_trip = Trip.objects.create(
+            name="Japan 2026",
+            start_date=date(2026, 9, 10),
+            end_date=date(2026, 9, 17),
+            trip_manager=self.employee,
+            status=self.status,
+        )
         self.first_task = Task.objects.create(
             name="Send rooming reminder",
             trip=self.trip,
@@ -674,7 +681,7 @@ class TaskDashboardTests(TestCase):
         )
         self.second_task = Task.objects.create(
             name="Confirm host call",
-            trip=self.trip,
+            trip=self.other_trip,
             assigned_to=self.second_employee,
             status=Task.Status.DONE,
             due_date=date(2026, 7, 15),
@@ -686,16 +693,19 @@ class TaskDashboardTests(TestCase):
         response = self.client.get(reverse("task_list"))
 
         self.assertContains(response, "Assigned to")
+        self.assertContains(response, "Trip")
         self.assertContains(response, "Due date from")
         self.assertContains(response, reverse("task_quick_update", args=[self.first_task.pk]))
         self.assertContains(response, self.trip.name)
+        self.assertContains(response, self.other_trip.name)
 
-    def test_task_dashboard_filters_by_assignee_status_and_due_date(self):
+    def test_task_dashboard_filters_by_trip_assignee_status_and_due_date(self):
         self.client.force_login(self.user)
 
         response = self.client.get(
             reverse("task_list"),
             {
+                "trip": self.other_trip.pk,
                 "assigned_to": self.second_employee.pk,
                 "status": Task.Status.DONE,
                 "due_date_from": "2026-07-10",

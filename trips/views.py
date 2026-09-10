@@ -196,6 +196,9 @@ class TaskListView(LoginRequiredMixin, ListView):
             "assigned_to__user",
         ).order_by("due_date", "created_at")
 
+        if trip := self.request.GET.get("trip"):
+            queryset = queryset.filter(trip_id=trip)
+
         if assigned_to := self.request.GET.get("assigned_to"):
             queryset = queryset.filter(assigned_to_id=assigned_to)
 
@@ -213,11 +216,13 @@ class TaskListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         filters = {
+            "trip": self.request.GET.get("trip", ""),
             "assigned_to": self.request.GET.get("assigned_to", ""),
             "status": self.request.GET.get("status", ""),
             "due_date_from": self.request.GET.get("due_date_from", ""),
             "due_date_to": self.request.GET.get("due_date_to", ""),
         }
+        context["trips"] = Trip.objects.order_by("start_date", "name")
         context["employees"] = Employee.objects.select_related("user")
         context["task_status_choices"] = Task.Status.choices
         context["filters"] = filters
