@@ -59,6 +59,36 @@ class CustomerDocumentFormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("file", form.errors)
 
+    def test_rejects_file_with_mismatched_contents(self):
+        form = CustomerDocumentForm(
+            data={"title": "Disguised file"},
+            files={
+                "file": SimpleUploadedFile(
+                    "passport.pdf",
+                    b"\xff\xd8\xffThis is actually a JPEG.",
+                    content_type="application/pdf",
+                )
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("contents do not match", form.errors["file"][0])
+
+    def test_rejects_file_larger_than_ten_megabytes(self):
+        form = CustomerDocumentForm(
+            data={"title": "Large file"},
+            files={
+                "file": SimpleUploadedFile(
+                    "passport.pdf",
+                    b"%PDF-" + (b"0" * (10 * 1024 * 1024)),
+                    content_type="application/pdf",
+                )
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("10 MB or smaller", form.errors["file"][0])
+
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class CustomerViewTests(TestCase):

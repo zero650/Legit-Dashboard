@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.contrib.auth.models import Group, Permission
 
 from trips.models import Employee
+from .forms import StaffUserCreateForm
 
 
 class StaffUsersAdminTests(TestCase):
@@ -158,3 +159,19 @@ class StaffUsersViewTests(TestCase):
             list(existing_user.groups.values_list("name", flat=True)),
             ["Host"],
         )
+
+    def test_staff_create_rejects_common_password(self):
+        form = StaffUserCreateForm(
+            data={
+                "email": "weak@example.com",
+                "first_name": "Weak",
+                "last_name": "Password",
+                "is_active": "on",
+                "roles": [],
+                "password1": "password",
+                "password2": "password",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("password1", form.errors)

@@ -38,27 +38,38 @@ class TripDashboardView(LoginRequiredMixin, TemplateView):
         today = timezone.localdate()
         context["upcoming_trips"] = (
             Trip.objects.select_related("trip_manager", "trip_manager__user", "status")
+            .filter(end_date__gte=today)
             .annotate(open_tasks=Count("tasks", filter=~Q(tasks__status=Task.Status.DONE)))
             .order_by("start_date")[:8]
         )
-        context["open_tasks"] = (
-            Task.objects.select_related("trip", "assigned_to", "assigned_to__user")
-            .exclude(status=Task.Status.DONE)
-            .order_by("due_date", "created_at")[:12]
-        )
+        context["can_view_tasks"] = self.request.user.has_perm("trips.view_task")
+        context["open_tasks"] = []
+        if context["can_view_tasks"]:
+            context["open_tasks"] = (
+                Task.objects.select_related("trip", "assigned_to", "assigned_to__user")
+                .exclude(status=Task.Status.DONE)
+                .order_by("due_date", "created_at")[:12]
+            )
         context["trip_count"] = Trip.objects.count()
-        context["open_task_count"] = Task.objects.exclude(status=Task.Status.DONE).count()
+        context["open_task_count"] = (
+            Task.objects.exclude(status=Task.Status.DONE).count()
+            if context["can_view_tasks"]
+            else None
+        )
         context["running_trip_count"] = Trip.objects.exclude(
             status__name__in=["Completed", "Closed"],
         ).filter(
             start_date__lte=today,
             end_date__gte=today,
         ).count()
-        context["top_customers"] = (
-            Customer.objects.annotate(trip_count=Count("trip_history"))
-            .filter(trip_count__gt=0)
-            .order_by("-trip_count", "last_name", "first_name")[:5]
-        )
+        context["can_view_crm"] = self.request.user.has_perm("crm.view_customer")
+        context["top_customers"] = []
+        if context["can_view_crm"]:
+            context["top_customers"] = (
+                Customer.objects.annotate(trip_count=Count("trip_history"))
+                .filter(trip_count__gt=0)
+                .order_by("-trip_count", "last_name", "first_name")[:5]
+            )
         return context
 
 

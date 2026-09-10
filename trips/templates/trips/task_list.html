@@ -34,8 +34,8 @@
     .task-quick-edit-form {
       align-items: center;
       display: inline-grid;
-      gap: 4px;
-      grid-template-columns: minmax(136px, 1.1fr) minmax(88px, 0.64fr) minmax(112px, 0.72fr);
+      column-gap: 10px;
+      grid-template-columns: minmax(160px, 1.15fr) minmax(124px, 0.75fr) minmax(132px, 0.85fr);
       margin: 0;
       position: relative;
       white-space: nowrap;
@@ -48,41 +48,43 @@
 
     .task-table th,
     .task-table td {
+      padding-bottom: 18px;
+      padding-top: 18px;
       vertical-align: middle;
     }
 
     .task-table th:nth-child(1),
     .task-table td:nth-child(1) {
-      width: 24%;
+      width: 22%;
     }
 
     .task-table th:nth-child(2),
     .task-table td:nth-child(2) {
-      width: 18%;
+      width: 16%;
     }
 
     .task-table th:nth-child(3),
     .task-table td:nth-child(3) {
-      width: 33%;
+      width: 44%;
     }
 
     .task-table th:nth-child(4),
     .task-table td:nth-child(4) {
-      width: 15%;
+      width: 10%;
       white-space: nowrap;
     }
 
     .task-table th:nth-child(5),
     .task-table td:nth-child(5) {
-      width: 10%;
+      width: 8%;
       white-space: nowrap;
     }
 
     .task-table td:nth-child(3),
     .task-table td:nth-child(4),
     .task-table td:nth-child(5) {
-      padding-left: 16px;
-      padding-right: 16px;
+      padding-left: 18px;
+      padding-right: 18px;
     }
 
     .task-name,
@@ -102,23 +104,24 @@
 
     .task-quick-edit-form select,
     .task-quick-edit-form input[type="date"] {
-      font-size: 13px;
+      font-size: 14px;
       min-width: 0;
-      min-height: 34px;
-      padding: 6px 10px;
+      min-height: 40px;
+      padding-bottom: 8px;
+      padding-top: 8px;
       width: 100%;
     }
 
     .task-quick-edit-form .assignee-select {
-      min-width: 136px;
+      min-width: 160px;
     }
 
     .task-quick-edit-form .status-select {
-      min-width: 88px;
+      min-width: 124px;
     }
 
     .task-quick-edit-form input[type="date"] {
-      min-width: 112px;
+      min-width: 132px;
     }
 
     .task-quick-edit-form.is-submitting {
@@ -170,7 +173,22 @@
       margin-top: 22px;
     }
 
+    @media (max-width: 1120px) and (min-width: 681px) {
+      .task-table {
+        min-width: 1120px;
+      }
+
+      .table-card {
+        overflow-x: auto;
+      }
+    }
+
     @media (max-width: 680px) {
+      .task-table td:nth-child(n) {
+        width: 100%;
+        white-space: normal;
+      }
+
       .task-table {
         table-layout: auto;
       }
@@ -219,9 +237,9 @@
   </style>
   <section class="hero-shell">
     <div class="hero-copy">
-      <p class="page-kicker">Ops detail</p>
+      <p class="page-kicker">Trip operations</p>
       <h1>Tasks</h1>
-      <p class="eyebrow">Filter, review, and update all task work, with quick access to trips and reusable task templates.</p>
+      <p class="eyebrow">Manage assignments, deadlines, and progress.</p>
       <div class="task-section-actions">
         <a class="button secondary" href="{% url 'trip_list' %}">Trips</a>
         <a class="button secondary" href="{% url 'task_template_list' %}">Task Templates</a>
@@ -230,7 +248,8 @@
   </section>
 
   <section class="task-list-shell">
-  <section class="panel soft">
+  <section class="table-card">
+  <div class="filter-toolbar">
     <button
       class="button secondary filter-toggle"
       type="button"
@@ -277,15 +296,13 @@
         <a class="button secondary" href="{% url 'task_list' %}">Clear</a>
       </div>
     </form>
-  </section>
-
-  <section class="table-card">
+  </div>
     <div class="table-header">
       <div>
         <p class="page-kicker">Task board</p>
         <h2>All Tasks</h2>
       </div>
-      <p class="table-intro">Fast inline updates for assignee, status, and due date, wrapped in a presentation that feels less like a back office spreadsheet.</p>
+      <p class="table-intro">Update assignments, status, and due dates here.</p>
     </div>
     <table class="responsive-table task-table">
       <thead>

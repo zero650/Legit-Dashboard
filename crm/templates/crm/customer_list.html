@@ -33,7 +33,7 @@
 
     .crm-stat strong {
       display: block;
-      font-family: "Fraunces", Georgia, serif;
+      font-family: Georgia, serif;
       font-size: 32px;
       font-weight: 600;
       line-height: 1;
@@ -70,8 +70,8 @@
       <p class="eyebrow">Manage guest contact details, passport information, notes, and travel documents.</p>
     </div>
     <div class="actions" style="margin:0">
-      <a class="button secondary" href="{% url 'crm_customer_import' %}">Import CSV</a>
-      <a class="button sun" href="{% url 'crm_customer_create' %}">Add customer</a>
+      {% if perms.crm.add_customer %}<a class="button secondary" href="{% url 'crm_customer_import' %}">Import CSV</a>
+      <a class="button sun" href="{% url 'crm_customer_create' %}">Add customer</a>{% endif %}
     </div>
   </section>
 
@@ -111,7 +111,7 @@
         <p class="page-kicker">Customer directory</p>
         <h2>All customers</h2>
       </div>
-      <p class="table-intro">Fast access to contact details, passport status, trip count, spend, notes, and uploaded files.</p>
+      <p class="table-intro">Contact details and travel history.</p>
     </div>
     <table class="responsive-table">
       <thead>

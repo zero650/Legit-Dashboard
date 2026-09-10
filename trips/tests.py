@@ -338,6 +338,11 @@ class TripDashboardTests(TestCase):
             password="password",
         )
         self.employee = Employee.objects.create(user=self.user)
+        self.user.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["view_task", "add_task", "view_customer"]
+            )
+        )
         staff_role, _ = Group.objects.get_or_create(name="Staff")
         self.employee.roles.add(staff_role)
         self.status = TripStatus.objects.create(name="Planning")
@@ -364,7 +369,7 @@ class TripDashboardTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("trip_dashboard"))
 
-        self.assertContains(response, "Currently running trips")
+        self.assertContains(response, "Traveling now")
         self.assertEqual(response.context["running_trip_count"], 1)
         self.assertContains(response, f'{reverse("task_create")}?trip={running_trip.pk}')
         self.assertNotContains(response, "Active task templates")
@@ -393,6 +398,52 @@ class TripDashboardTests(TestCase):
         self.assertContains(response, "Customer5 Traveler")
         self.assertContains(response, "Customer1 Traveler")
         self.assertNotContains(response, "Customer0 Traveler")
+
+    def test_dashboard_hides_crm_data_without_customer_permission(self):
+        customer = Customer.objects.create(
+            first_name="Private",
+            last_name="Traveler",
+            email="private@example.com",
+        )
+        CustomerTripHistory.objects.create(
+            customer=customer,
+            trip_name="Private Trip",
+            trip_start_date="2026-01-01",
+            trip_end_date="2026-01-07",
+            money_spent="1000.00",
+        )
+        self.user.user_permissions.remove(
+            Permission.objects.get(codename="view_customer")
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+
+        self.assertNotContains(response, "Top customers")
+        self.assertNotContains(response, "private@example.com")
+        self.assertNotContains(response, reverse("crm_customer_list"))
+
+    def test_dashboard_excludes_trips_that_have_ended(self):
+        today = timezone.localdate()
+        Trip.objects.create(
+            name="Past Trip",
+            start_date=today - timedelta(days=7),
+            end_date=today - timedelta(days=1),
+            trip_manager=self.employee,
+            status=self.status,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+
+        self.assertNotContains(response, "Past Trip")
+
+    def test_security_headers_are_present(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+
+        self.assertIn("default-src 'self'", response["Content-Security-Policy"])
+        self.assertEqual(response["Cross-Origin-Resource-Policy"], "same-origin")
 
 
 class TripListQuickUpdateTests(TestCase):

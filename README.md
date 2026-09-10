@@ -63,14 +63,13 @@ Docker runs Caddy in front of Django so local traffic goes through HTTPS. The lo
 
 To test from an iPhone on the same Wi-Fi network, set `SITE_HOST` and `DJANGO_ALLOWED_HOSTS` to your Mac's local network name or LAN IP, then open the HTTPS URL for that host.
 
-The development container creates a starter admin user automatically:
+Create the first administrator explicitly so that a shared default password is never used:
 
-```text
-Email: admin@example.com
-Password: admin
+```bash
+docker compose exec web python manage.py createsuperuser
 ```
 
-The default compose file is for local development only. It reads its settings from `.env`, keeps the source tree bind-mounted, and can optionally create a local superuser when `DJANGO_CREATE_SUPERUSER=1`.
+The default compose file is for local development only. It reads its settings from `.env`, keeps the source tree bind-mounted, and can optionally bootstrap a superuser when `DJANGO_CREATE_SUPERUSER=1`. Bootstrap only runs when no superuser exists; disable it again after first use.
 
 On startup, the web container waits for PostgreSQL, runs migrations, seeds the default statuses and permission groups, collects static files, and starts Django.
 
@@ -122,6 +121,8 @@ docker compose down -v
 ```
 
 Use `docker compose down -v` only when you want to delete the local PostgreSQL data volume.
+
+See [docs/operations.md](docs/operations.md) for health checks, backup, restore, and credential-rotation guidance.
 
 ## Manual Local Setup
 

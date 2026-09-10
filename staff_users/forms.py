@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib.auth.models import Group
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from trips.models import Employee
 
@@ -54,6 +56,18 @@ class StaffUserBaseForm(forms.ModelForm):
         employee.roles.set(self.cleaned_data["roles"])
         return employee
 
+    def validate_new_password(self, password, field_name="password1"):
+        if not password:
+            return
+        candidate = self.instance
+        for attribute in ("email", "first_name", "last_name"):
+            if attribute in self.cleaned_data:
+                setattr(candidate, attribute, self.cleaned_data[attribute])
+        try:
+            validate_password(password, user=candidate)
+        except ValidationError as exc:
+            self.add_error(field_name, exc)
+
 
 class StaffUserCreateForm(StaffUserBaseForm):
     password1 = forms.CharField(
@@ -76,6 +90,8 @@ class StaffUserCreateForm(StaffUserBaseForm):
         password2 = cleaned_data.get("password2")
         if password1 and password2 and password1 != password2:
             self.add_error("password2", "The two password fields didn't match.")
+        elif password1:
+            self.validate_new_password(password1)
         return cleaned_data
 
     def save(self, commit=True):
@@ -112,6 +128,8 @@ class StaffUserUpdateForm(StaffUserBaseForm):
         if password1 or password2:
             if password1 != password2:
                 self.add_error("password2", "The two password fields didn't match.")
+            elif password1:
+                self.validate_new_password(password1)
         return cleaned_data
 
     def save(self, commit=True):

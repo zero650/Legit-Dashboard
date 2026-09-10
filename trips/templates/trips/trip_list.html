@@ -16,7 +16,7 @@
     .filter-grid {
       display: grid;
       gap: 12px;
-      grid-template-columns: 1.4fr repeat(3, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       align-items: end;
     }
 
@@ -44,13 +44,13 @@
       align-items: center;
       display: inline-grid;
       gap: 6px;
-      grid-template-columns: minmax(118px, 1fr) auto;
+      grid-template-columns: minmax(118px, 1fr);
       margin: 0;
     }
 
     .trip-quick-edit-form select {
       min-height: 34px;
-      padding: 6px 8px;
+      padding: 6px 32px 6px 8px;
     }
 
     .trip-quick-edit-form .person-select {
@@ -72,7 +72,7 @@
       color: var(--muted);
       font-size: 12px;
       font-weight: 700;
-      min-width: 48px;
+      min-width: 0;
     }
 
     .trip-save-state[data-tone="success"] {
@@ -144,9 +144,9 @@
   <section class="hero-shell">
     <div class="split-callout">
       <div class="hero-copy">
-        <p class="page-kicker">Trip slate</p>
-        <h1>Every itinerary in one polished queue.</h1>
-        <p class="eyebrow">A warmer, more editorial trip index that still keeps quick operations edits close at hand.</p>
+        <p class="page-kicker">Trip operations</p>
+        <h1>Trips</h1>
+        <p class="eyebrow">Manage departures, assignments, and remaining tasks.</p>
       </div>
       <div class="page-header-actions">
         <a class="button sun" href="{% url 'trip_create' %}">Create trip</a>
@@ -154,7 +154,8 @@
     </div>
   </section>
   <section class="trip-list-shell">
-  <section class="panel soft">
+  <section class="table-card">
+  <div class="filter-toolbar">
     <button
       class="button secondary filter-toggle"
       type="button"
@@ -214,14 +215,13 @@
         <a class="button secondary" href="{% url 'trip_list' %}">Clear</a>
       </div>
     </form>
-  </section>
-  <section class="table-card">
+  </div>
     <div class="table-header">
       <div>
         <p class="page-kicker">Current catalog</p>
         <h2>Trips</h2>
       </div>
-      <p class="table-intro">Quick-edit leaders, managers, and status without losing the cleaner premium feel.</p>
+      <p class="table-intro">Changes to assignments and status save automatically.</p>
     </div>
     <table class="responsive-table">
       <thead>
