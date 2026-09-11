@@ -1,12 +1,12 @@
 import csv
 import io
 import mimetypes
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.core.exceptions import ValidationError
-from django.db.models import Count, DecimalField, Q, Sum, Value
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, IntegerField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -23,11 +23,19 @@ MONEY_FIELD = DecimalField(max_digits=10, decimal_places=2)
 
 
 def trip_history_annotations():
+    manual_trip_count = Count("trip_history", distinct=True)
+    manual_money_spent = Coalesce(
+        Sum("trip_history__money_spent"),
+        Value(Decimal("0.00")),
+        output_field=MONEY_FIELD,
+    )
     return {
-        "trip_count": Count("trip_history", distinct=True),
-        "total_money_spent": Coalesce(
-            Sum("trip_history__money_spent"),
-            Value(Decimal("0.00")),
+        "trip_count": ExpressionWrapper(
+            manual_trip_count + F("woocommerce_order_count"),
+            output_field=IntegerField(),
+        ),
+        "total_money_spent": ExpressionWrapper(
+            manual_money_spent + F("woocommerce_total_spend"),
             output_field=MONEY_FIELD,
         ),
     }
@@ -114,6 +122,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
     success_url = reverse_lazy("crm_customer_list")
 
     column_aliases = {
+        "name": "full_name",
         "first_name": "first_name",
         "firstname": "first_name",
         "first": "first_name",
@@ -130,12 +139,20 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         "zip": "postal",
         "zip_code": "postal",
         "state": "state",
+        "region": "state",
         "passport_number": "passport_number",
         "passport": "passport_number",
         "passport_expiration_date": "passport_expiration_date",
         "passport_expiration": "passport_expiration_date",
         "passport_expiry": "passport_expiration_date",
         "notes": "notes",
+        "username": "woocommerce_username",
+        "last_active": "woocommerce_last_active",
+        "date_registered": "woocommerce_date_registered",
+        "orders": "woocommerce_order_count",
+        "total_spend": "woocommerce_total_spend",
+        "aov": "woocommerce_aov",
+        "country_region": "woocommerce_country_region",
     }
     customer_fields = [
         "first_name",
@@ -148,6 +165,8 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         "state",
         "passport_number",
         "passport_expiration_date",
+        "woocommerce_order_count",
+        "woocommerce_total_spend",
         "notes",
     ]
     required_fields = {"first_name", "last_name", "email"}
@@ -177,10 +196,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
             raise ValidationError("The uploaded CSV is empty.")
 
         field_map = self.build_field_map(reader.fieldnames)
-        missing_columns = self.required_fields - set(field_map.values())
-        if missing_columns:
-            labels = ", ".join(sorted(missing_columns))
-            raise ValidationError(f"Missing required columns: {labels}.")
+        self.validate_required_columns(field_map)
 
         rows_to_import = self.build_customer_rows(reader, field_map)
         imported_count = 0
@@ -197,6 +213,18 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
                 imported_count += 1
 
         return imported_count, updated_count
+
+    def validate_required_columns(self, field_map):
+        mapped_fields = set(field_map.values())
+        missing_columns = {"email"} - mapped_fields
+        has_separate_name = {"first_name", "last_name"}.issubset(mapped_fields)
+        has_full_name = "full_name" in mapped_fields
+        if not has_separate_name and not has_full_name:
+            missing_columns.update({"first_name", "last_name"})
+
+        if missing_columns:
+            labels = ", ".join(sorted(missing_columns))
+            raise ValidationError(f"Missing required columns: {labels}.")
 
     def build_field_map(self, fieldnames):
         field_map = {}
@@ -215,8 +243,30 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
 
             row_errors = []
             customer_data = {field: "" for field in self.customer_fields}
+            customer_data["woocommerce_order_count"] = 0
+            customer_data["woocommerce_total_spend"] = Decimal("0.00")
+            woocommerce_data = {}
             for source_column, target_field in field_map.items():
-                customer_data[target_field] = (row.get(source_column) or "").strip()
+                value = (row.get(source_column) or "").strip()
+                if target_field == "full_name":
+                    first_name, last_name = self.split_full_name(value)
+                    customer_data["first_name"] = customer_data["first_name"] or first_name
+                    customer_data["last_name"] = customer_data["last_name"] or last_name
+                elif target_field == "woocommerce_order_count":
+                    customer_data[target_field], error = self.parse_woocommerce_order_count(value)
+                    if error:
+                        row_errors.append(f"Row {index}: {error}")
+                elif target_field == "woocommerce_total_spend":
+                    customer_data[target_field], error = self.parse_woocommerce_total_spend(value)
+                    if error:
+                        row_errors.append(f"Row {index}: {error}")
+                elif target_field.startswith("woocommerce_"):
+                    woocommerce_data[target_field] = value
+                else:
+                    customer_data[target_field] = value
+
+            if woocommerce_notes := self.build_woocommerce_notes(woocommerce_data):
+                customer_data["notes"] = self.combine_notes(customer_data["notes"], woocommerce_notes)
 
             for required_field in self.required_fields:
                 if not customer_data[required_field]:
@@ -244,8 +294,68 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         return rows
 
     @staticmethod
+    def split_full_name(full_name):
+        name_parts = (full_name or "").split()
+        if not name_parts:
+            return "", ""
+        if len(name_parts) == 1:
+            return name_parts[0], ""
+        return name_parts[0], " ".join(name_parts[1:])
+
+    @staticmethod
+    def parse_woocommerce_order_count(value):
+        if not value:
+            return 0, None
+        try:
+            order_count = int(value)
+        except ValueError:
+            return 0, "Orders must be a whole number."
+        if order_count < 0:
+            return 0, "Orders cannot be negative."
+        return order_count, None
+
+    @staticmethod
+    def parse_woocommerce_total_spend(value):
+        if not value:
+            return Decimal("0.00"), None
+        normalized = value.replace("$", "").replace(",", "")
+        try:
+            total_spend = Decimal(normalized)
+        except InvalidOperation:
+            return Decimal("0.00"), "Total spend must be a number."
+        if total_spend < 0:
+            return Decimal("0.00"), "Total spend cannot be negative."
+        return total_spend, None
+
+    @staticmethod
+    def build_woocommerce_notes(woocommerce_data):
+        note_labels = [
+            ("woocommerce_username", "WooCommerce username"),
+            ("woocommerce_last_active", "WooCommerce last active"),
+            ("woocommerce_date_registered", "WooCommerce date registered"),
+            ("woocommerce_aov", "WooCommerce AOV"),
+            ("woocommerce_country_region", "WooCommerce country/region"),
+        ]
+        notes = [
+            f"{label}: {woocommerce_data[field]}"
+            for field, label in note_labels
+            if woocommerce_data.get(field)
+        ]
+        return "\n".join(notes)
+
+    @staticmethod
+    def combine_notes(existing_notes, imported_notes):
+        notes = [note for note in [existing_notes, imported_notes] if note]
+        return "\n\n".join(notes)
+
+    @staticmethod
     def normalize_column(column):
-        return (column or "").strip().lower().replace(" ", "_").replace("-", "_")
+        normalized = (column or "").strip().lower()
+        for character in [" ", "-", "/"]:
+            normalized = normalized.replace(character, "_")
+        while "__" in normalized:
+            normalized = normalized.replace("__", "_")
+        return normalized.strip("_")
 
 
 class CustomerUpdateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
