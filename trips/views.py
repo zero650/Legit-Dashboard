@@ -1,3 +1,7 @@
+from datetime import timedelta
+
+from django import forms
+from django.db import transaction
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
@@ -14,6 +18,7 @@ from .forms import (
     TaskCreateForm,
     TaskForm,
     TaskQuickUpdateForm,
+    TaskWorkspaceUpdateForm,
     TaskTemplateForm,
     TaskTemplatePackForm,
     TripForm,
@@ -188,6 +193,51 @@ class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
         return redirect(request.POST.get("next") or "trip_list")
 
 
+def task_view_queries(user):
+    today = timezone.localdate()
+    unfinished = ~Q(status=Task.Status.DONE)
+    return {
+        "open": ("Open", unfinished),
+        "mine": ("My tasks", unfinished & Q(assigned_to__user=user)),
+        "overdue": ("Overdue", unfinished & Q(due_date__lt=today)),
+        "today": ("Today", unfinished & Q(due_date=today)),
+        "upcoming": ("Upcoming", unfinished & Q(due_date__gt=today, due_date__lte=today + timedelta(days=7))),
+        "completed": ("Completed", Q(status=Task.Status.DONE)),
+        "all": ("All", Q()),
+    }
+
+
+def task_view_counts(user):
+    return Task.objects.aggregate(**{
+        key: Count("pk", filter=query) for key, (_, query) in task_view_queries(user).items()
+    })
+
+
+def task_payload(task):
+    days = task.due_in_days
+    tone = "done" if task.status == Task.Status.DONE else "overdue" if days is not None and days < 0 else "today" if days == 0 else "normal"
+    if task.status == Task.Status.DONE:
+        due_label = "Completed"
+    elif days is None:
+        due_label = "No due date"
+    elif days < 0:
+        due_label = f"{abs(days)} day{'s' if abs(days) != 1 else ''} overdue"
+    elif days == 0:
+        due_label = "Today"
+    elif days == 1:
+        due_label = "Tomorrow"
+    else:
+        due_label = f"In {days} days"
+    return {
+        "id": task.pk, "name": task.name, "notes": task.notes,
+        "trip": task.trip.name, "assigned_to_id": task.assigned_to_id or "",
+        "assigned_to": str(task.assigned_to) if task.assigned_to else "Unassigned",
+        "status": task.status, "status_label": task.get_status_display(),
+        "due_date": task.due_date.isoformat() if task.due_date else "",
+        "due_in_display": task.due_in_display, "due_label": due_label, "tone": tone,
+    }
+
+
 class TaskListView(LoginRequiredMixin, ListView):
     model = Task
     template_name = "trips/task_list.html"
@@ -195,45 +245,97 @@ class TaskListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        queryset = Task.objects.select_related(
-            "trip",
-            "assigned_to",
-            "assigned_to__user",
-        ).order_by("due_date", "created_at")
-
-        if trip := self.request.GET.get("trip"):
-            queryset = queryset.filter(trip_id=trip)
-
-        if assigned_to := self.request.GET.get("assigned_to"):
-            queryset = queryset.filter(assigned_to_id=assigned_to)
-
-        if status := self.request.GET.get("status"):
-            queryset = queryset.filter(status=status)
-
-        if due_date_from := self.request.GET.get("due_date_from"):
-            queryset = queryset.filter(due_date__gte=due_date_from)
-
-        if due_date_to := self.request.GET.get("due_date_to"):
-            queryset = queryset.filter(due_date__lte=due_date_to)
-
-        return queryset
+        params = self.request.GET
+        views = task_view_queries(self.request.user)
+        self.active_view = params.get("view", "all" if params.get("status") else "open")
+        if self.active_view not in views:
+            self.active_view = "open"
+        queryset = Task.objects.select_related("trip", "assigned_to", "assigned_to__user").filter(views[self.active_view][1])
+        self.filters = {key: params.get(key, "").strip() for key in (
+            "q", "trip", "assigned_to", "status", "due_date_from", "due_date_to", "sort"
+        )}
+        for key in ("trip", "assigned_to"):
+            value = self.filters[key]
+            if key == "assigned_to" and value == "unassigned":
+                queryset = queryset.filter(assigned_to__isnull=True)
+            elif value:
+                if value.isdecimal() and len(value) < 19:
+                    queryset = queryset.filter(**{key + "_id": value})
+                else:
+                    queryset = queryset.none()
+        if self.filters["q"]:
+            queryset = queryset.filter(Q(name__icontains=self.filters["q"]) | Q(trip__name__icontains=self.filters["q"]))
+        if self.filters["status"]:
+            queryset = queryset.filter(status=self.filters["status"])
+        self.filter_error = ""
+        for key, lookup in (("due_date_from", "due_date__gte"), ("due_date_to", "due_date__lte")):
+            if self.filters[key]:
+                try:
+                    value = forms.DateField().clean(self.filters[key])
+                    queryset = queryset.filter(**{lookup: value})
+                except forms.ValidationError:
+                    self.filter_error = "Enter a valid date to filter tasks."
+                    queryset = queryset.none()
+        sorts = {
+            "due": (F("due_date").asc(nulls_last=True), "pk"),
+            "latest": (F("due_date").desc(nulls_last=True), "pk"),
+            "name": ("name", "pk"),
+            "trip": ("trip__name", F("due_date").asc(nulls_last=True), "pk"),
+        }
+        if self.filters["sort"] not in sorts:
+            self.filters["sort"] = "due"
+        return queryset.order_by(*sorts[self.filters["sort"]])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        filters = {
-            "trip": self.request.GET.get("trip", ""),
-            "assigned_to": self.request.GET.get("assigned_to", ""),
-            "status": self.request.GET.get("status", ""),
-            "due_date_from": self.request.GET.get("due_date_from", ""),
-            "due_date_to": self.request.GET.get("due_date_to", ""),
-        }
-        context["trips"] = Trip.objects.order_by("start_date", "name")
-        context["employees"] = Employee.objects.select_related("user")
-        context["task_status_choices"] = Task.Status.choices
-        context["filters"] = filters
-        context["filters_active"] = any(filters.values())
-        context["current_querystring"] = self.request.GET.urlencode()
+        counts = task_view_counts(self.request.user)
+        tabs = []
+        for key, (label, _) in task_view_queries(self.request.user).items():
+            query = self.request.GET.copy()
+            for field in ("page", "status"):
+                query.pop(field, None)
+            query["view"] = key
+            tabs.append({"key": key, "label": label, "count": counts[key], "url": "?" + query.urlencode()})
+        query = self.request.GET.copy()
+        query.pop("page", None)
+        context.update({
+            "trips": Trip.objects.order_by("start_date", "name"),
+            "employees": Employee.objects.select_related("user"),
+            "task_status_choices": Task.Status.choices,
+            "filters": self.filters, "active_view": self.active_view, "view_tabs": tabs,
+            "filters_active": any(self.filters[k] for k in ("trip", "assigned_to", "status", "due_date_from", "due_date_to")),
+            "filter_error": self.filter_error,
+            "current_querystring": self.request.GET.urlencode(), "page_query": query.urlencode(),
+            "task_data": [task_payload(task) for task in context["tasks"]],
+        })
+        for task, data in zip(context["tasks"], context["task_data"]):
+            task.queue = data
         return context
+
+
+class TaskBulkUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "trips.change_task"
+
+    def post(self, request):
+        ids = request.POST.getlist("task_ids")
+        field = request.POST.get("field")
+        if not ids or len(ids) > 50 or any(not pk.isdecimal() or len(pk) > 18 for pk in ids) or field not in ("assigned_to", "status", "due_date"):
+            return JsonResponse({"ok": False, "error": "Select up to 50 tasks and an action."}, status=400)
+        with transaction.atomic():
+            tasks = list(Task.objects.select_for_update().filter(pk__in=ids))
+            if len(tasks) != len(set(ids)):
+                return JsonResponse({"ok": False, "error": "Some tasks no longer exist. Refresh the page."}, status=400)
+            pending = []
+            for task in tasks:
+                data = {"assigned_to": task.assigned_to_id or "", "status": task.status, "due_date": task.due_date or ""}
+                data[field] = request.POST.get("value", "")
+                form = TaskQuickUpdateForm(data, instance=task)
+                if not form.is_valid():
+                    return JsonResponse({"ok": False, "error": "Choose a valid value.", "errors": form.errors.get_json_data()}, status=400)
+                pending.append(form)
+            for form in pending:
+                form.save()
+        return JsonResponse({"ok": True, "updated": len(tasks)})
 
 
 class TripDetailView(LoginRequiredMixin, DetailView):
@@ -338,9 +440,13 @@ class TaskStatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
 class TaskQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = "trips.change_task"
 
+    @transaction.atomic
     def post(self, request, pk):
-        task = get_object_or_404(Task, pk=pk)
-        form = TaskQuickUpdateForm(request.POST, instance=task)
+        task = get_object_or_404(Task.objects.select_for_update(of=("self",)).select_related("trip", "assigned_to__user"), pk=pk)
+        data = {"assigned_to": task.assigned_to_id or "", "status": task.status,
+                "due_date": task.due_date or "", "name": task.name, "notes": task.notes}
+        data.update({key: request.POST[key] for key in data if key in request.POST})
+        form = TaskWorkspaceUpdateForm(data, instance=task)
         wants_json = request.headers.get("x-requested-with") == "XMLHttpRequest"
         if not form.is_valid():
             if wants_json:
@@ -355,23 +461,7 @@ class TaskQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
         else:
             task = form.save()
             if wants_json:
-                assignee_label = "Unassigned"
-                if task.assigned_to:
-                    assignee_label = task.assigned_to.full_name or task.assigned_to.email
-                due_date_label = task.due_date.strftime("%Y-%m-%d") if task.due_date else ""
-                return JsonResponse(
-                    {
-                        "ok": True,
-                        "task": {
-                            "id": task.pk,
-                            "assigned_to": assignee_label,
-                            "status": task.status,
-                            "status_label": task.get_status_display(),
-                            "due_date": due_date_label,
-                            "due_in_display": task.due_in_display,
-                        },
-                    }
-                )
+                return JsonResponse({"ok": True, "task": task_payload(task), "counts": task_view_counts(request.user)})
             messages.success(request, f"Updated {task.name}.")
         return redirect(request.POST.get("next") or "task_list")
 
@@ -412,6 +502,8 @@ class TaskCreateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredMixin
         return initial
 
     def get_success_url(self):
+        if self.request.GET.get("return_to") == "tasks":
+            return reverse_lazy("task_list")
         return self.object.trip.get_absolute_url()
 
 

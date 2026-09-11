@@ -739,6 +739,126 @@ class TaskDashboardTests(TestCase):
         self.assertEqual(self.first_task.due_date, date(2026, 7, 20))
         self.assertIsNone(self.first_task.days_to_before_trip)
 
+    def test_default_queue_excludes_completed_and_all_view_includes_them(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("task_list"))
+        self.assertEqual(list(response.context["tasks"]), [self.first_task])
+        response = self.client.get(reverse("task_list"), {"view": "all"})
+        self.assertEqual(len(response.context["tasks"]), 2)
+
+    def test_quick_views_and_counts_use_local_dates_and_current_employee(self):
+        self.client.force_login(self.user)
+        today = timezone.localdate()
+        self.first_task.due_date = today
+        self.first_task.save()
+        tomorrow = Task.objects.create(name="Tomorrow", trip=self.trip, due_date=today + timedelta(days=1))
+        Task.objects.create(name="Later", trip=self.trip, due_date=today + timedelta(days=8))
+        for view, expected in (("mine", [self.first_task]), ("today", [self.first_task]), ("upcoming", [tomorrow]), ("completed", [self.second_task]), ("overdue", [])):
+            response = self.client.get(reverse("task_list"), {"view": view})
+            self.assertEqual(list(response.context["tasks"]), expected)
+            tab = next(tab for tab in response.context["view_tabs"] if tab["key"] == view)
+            self.assertEqual(tab["count"], len(expected))
+
+    def test_new_task_from_queue_returns_to_queue(self):
+        self.user.user_permissions.add(Permission.objects.get(content_type__app_label="trips", codename="add_task"))
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("task_create") + "?return_to=tasks", {
+            "name": "New queue task", "trip": self.trip.pk, "status": Task.Status.NOT_STARTED,
+        })
+        self.assertRedirects(response, reverse("task_list"))
+        self.assertTrue(Task.objects.filter(name="New queue task").exists())
+
+    def test_search_matches_task_or_trip_and_unassigned_filter(self):
+        self.client.force_login(self.user)
+        for query in ("ROOMING", "Italy"):
+            response = self.client.get(reverse("task_list"), {"q": query})
+            self.assertEqual(list(response.context["tasks"]), [self.first_task])
+        response = self.client.get(reverse("task_list"), {"assigned_to": "unassigned"})
+        self.assertEqual(list(response.context["tasks"]), [])
+
+    def test_pagination_preserves_search_and_sort_and_has_next_link(self):
+        self.client.force_login(self.user)
+        Task.objects.bulk_create([Task(name=f"Queue {index:02}", trip=self.trip) for index in range(51)])
+        response = self.client.get(reverse("task_list"), {"q": "Queue", "sort": "name"})
+        self.assertEqual(len(response.context["tasks"]), 50)
+        self.assertContains(response, 'q=Queue&amp;sort=name&amp;page=2')
+        response = self.client.get(reverse("task_list"), {"q": "Queue", "sort": "name", "page": 2})
+        self.assertEqual([task.name for task in response.context["tasks"]], ["Queue 50"])
+
+    def test_invalid_filters_do_not_crash_and_missing_dates_sort_last(self):
+        self.client.force_login(self.user)
+        undated = Task.objects.create(name="Undated", trip=self.trip)
+        response = self.client.get(reverse("task_list"))
+        self.assertEqual(list(response.context["tasks"]), [self.first_task, undated])
+        for filters in ({"due_date_from": "2026-99-99"}, {"trip": "bad"}, {"assigned_to": "9" * 30}):
+            response = self.client.get(reverse("task_list"), filters)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(list(response.context["tasks"]), [])
+
+    def test_partial_completion_and_undo_preserve_assignment_notes_and_schedule(self):
+        self.client.force_login(self.user)
+        self.first_task.notes = "Keep these notes"
+        self.first_task.days_to_before_trip = -5
+        self.first_task.save()
+        due = self.first_task.due_date
+        for status in (Task.Status.DONE, Task.Status.NOT_STARTED):
+            response = self.client.post(reverse("task_quick_update", args=[self.first_task.pk]), {"status": status}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["task"]["status"], status)
+            self.first_task.refresh_from_db()
+            self.assertEqual(self.first_task.assigned_to, self.employee)
+            self.assertEqual(self.first_task.notes, "Keep these notes")
+            self.assertEqual(self.first_task.due_date, due)
+            self.assertEqual(self.first_task.days_to_before_trip, -5)
+
+    def test_drawer_saves_name_and_notes_and_rejects_invalid_name(self):
+        self.client.force_login(self.user)
+        url = reverse("task_quick_update", args=[self.first_task.pk])
+        response = self.client.post(url, {"name": "Updated", "notes": "Details"}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.first_task.refresh_from_db()
+        self.assertEqual((self.first_task.name, self.first_task.notes), ("Updated", "Details"))
+        response = self.client.post(url, {"name": "", "notes": "Should not save"}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 400)
+        self.first_task.refresh_from_db()
+        self.assertEqual(self.first_task.notes, "Details")
+
+    def test_bulk_update_assigns_reschedules_and_completes_across_trips(self):
+        self.client.force_login(self.user)
+        ids = [self.first_task.pk, self.second_task.pk]
+        for field, value in (("assigned_to", str(self.second_employee.pk)), ("due_date", "2026-10-01"), ("status", "done")):
+            response = self.client.post(reverse("task_bulk_update"), {"task_ids": ids, "field": field, "value": value})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["updated"], 2)
+        for task in Task.objects.filter(pk__in=ids):
+            self.assertEqual(task.assigned_to, self.second_employee)
+            self.assertEqual(task.due_date, date(2026, 10, 1))
+            self.assertEqual(task.status, Task.Status.DONE)
+
+    def test_invalid_bulk_request_is_atomic_and_permission_is_required(self):
+        self.client.force_login(self.user)
+        for field, value, ids in (("status", "invalid", [self.first_task.pk]), ("due_date", "bad-date", [self.first_task.pk, self.second_task.pk]), ("status", "done", [self.first_task.pk, 999999])):
+            response = self.client.post(reverse("task_bulk_update"), {"task_ids": ids, "field": field, "value": value})
+            self.assertEqual(response.status_code, 400)
+            self.first_task.refresh_from_db()
+            self.assertEqual(self.first_task.status, Task.Status.NOT_STARTED)
+        self.client.force_login(self.second_user)
+        response = self.client.post(reverse("task_bulk_update"), {"task_ids": [self.first_task.pk], "field": "status", "value": "done"})
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(reverse("task_quick_update", args=[self.first_task.pk]), {"status": "done"})
+        self.assertEqual(response.status_code, 403)
+        response = self.client.get(reverse("task_list"))
+        self.assertNotContains(response, 'id="bulk-form"')
+        self.assertNotContains(response, 'class="complete-button"')
+
+    def test_notes_are_safely_embedded_in_task_data(self):
+        self.client.force_login(self.user)
+        self.first_task.notes = "</script><script>alert('unsafe')</script>"
+        self.first_task.save()
+        response = self.client.get(reverse("task_list"))
+        self.assertNotContains(response, self.first_task.notes)
+        self.assertEqual(response.context["task_data"][0]["notes"], self.first_task.notes)
+
 
 class TaskCreateViewTests(TestCase):
     def setUp(self):

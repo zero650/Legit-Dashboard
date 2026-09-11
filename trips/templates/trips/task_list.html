@@ -1,450 +1,84 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block title %}Tasks | Legit Dashboard{% endblock %}
-
 {% block content %}
-  <style>
-    .filter-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      align-items: end;
-    }
-
-    .filter-toggle {
-      align-items: center;
-      display: inline-flex;
-      gap: 10px;
-      min-height: 40px;
-    }
-
-    .filter-toggle-icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .filter-panel {
-      margin-top: 14px;
-    }
-
-    .filter-panel[hidden] {
-      display: none;
-    }
-
-    .task-quick-edit-form {
-      align-items: center;
-      display: inline-grid;
-      column-gap: 10px;
-      grid-template-columns: minmax(160px, 1.15fr) minmax(124px, 0.75fr) minmax(132px, 0.85fr);
-      margin: 0;
-      position: relative;
-      white-space: nowrap;
-      width: 100%;
-    }
-
-    .task-table {
-      table-layout: fixed;
-    }
-
-    .task-table th,
-    .task-table td {
-      padding-bottom: 18px;
-      padding-top: 18px;
-      vertical-align: middle;
-    }
-
-    .task-table th:nth-child(1),
-    .task-table td:nth-child(1) {
-      width: 22%;
-    }
-
-    .task-table th:nth-child(2),
-    .task-table td:nth-child(2) {
-      width: 16%;
-    }
-
-    .task-table th:nth-child(3),
-    .task-table td:nth-child(3) {
-      width: 40%;
-    }
-
-    .task-table th:nth-child(4),
-    .task-table td:nth-child(4) {
-      width: 14%;
-      overflow-wrap: normal;
-      white-space: normal;
-    }
-
-    .task-table th:nth-child(5),
-    .task-table td:nth-child(5) {
-      width: 8%;
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .task-table td:nth-child(3),
-    .task-table td:nth-child(4),
-    .task-table td:nth-child(5) {
-      padding-left: 18px;
-      padding-right: 18px;
-    }
-
-    .task-name,
-    .task-trip-link {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .task-name {
-      white-space: nowrap;
-    }
-
-    .task-trip-link {
-      line-height: 1.3;
-    }
-
-    .task-quick-edit-form select,
-    .task-quick-edit-form input[type="date"] {
-      font-size: 14px;
-      min-width: 0;
-      min-height: 40px;
-      padding-bottom: 8px;
-      padding-top: 8px;
-      width: 100%;
-    }
-
-    .task-quick-edit-form .assignee-select {
-      min-width: 160px;
-    }
-
-    .task-quick-edit-form .status-select {
-      min-width: 124px;
-    }
-
-    .task-quick-edit-form input[type="date"] {
-      min-width: 132px;
-    }
-
-    .task-quick-edit-form.is-submitting {
-      opacity: 0.65;
-      pointer-events: none;
-    }
-
-    .task-save-state {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-      left: 0;
-      min-width: 0;
-      position: absolute;
-      top: calc(100% + 4px);
-    }
-
-    .task-save-state[data-tone="success"] {
-      color: var(--accent-dark);
-    }
-
-    .task-save-state[data-tone="error"] {
-      color: #a33b2f;
-    }
-
-    .task-save-state[data-tone="muted"] {
-      color: var(--muted);
-    }
-
-    tr.save-success td {
-      background: rgba(46, 91, 87, 0.06);
-      transition: background 180ms ease;
-    }
-
-    tr.save-error td {
-      background: rgba(169, 68, 66, 0.08);
-      transition: background 180ms ease;
-    }
-
-    .task-list-shell {
-      display: grid;
-      gap: 18px;
-    }
-
-    .task-section-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 22px;
-    }
-
-    @media (max-width: 1120px) and (min-width: 681px) {
-      .task-table {
-        min-width: 1120px;
-      }
-
-      .table-card {
-        overflow-x: auto;
-      }
-    }
-
-    @media (max-width: 680px) {
-      .task-table td:nth-child(n) {
-        width: 100%;
-        white-space: normal;
-      }
-
-      .task-table {
-        table-layout: auto;
-      }
-
-      .filter-toggle {
-        justify-content: center;
-        width: 100%;
-      }
-
-      .task-list-shell {
-        gap: 14px;
-      }
-
-      .task-section-actions {
-        display: grid;
-        gap: 8px;
-        grid-template-columns: 1fr;
-      }
-
-      .task-quick-edit-form {
-        align-items: stretch;
-        display: grid;
-        gap: 8px;
-        grid-template-columns: none;
-        position: static;
-        width: 100%;
-        white-space: normal;
-      }
-
-      .task-save-state {
-        position: static;
-      }
-
-      .task-quick-edit-form select,
-      .task-quick-edit-form input[type="date"],
-      .task-quick-edit-form button {
-        min-height: 48px;
-        width: 100%;
-      }
-
-      .task-name,
-      .task-trip-link {
-        white-space: normal;
-      }
-    }
-  </style>
-  <section class="hero-shell">
-    <div class="hero-copy">
-      <p class="page-kicker">Trip operations</p>
-      <h1>Tasks</h1>
-      <p class="eyebrow">Manage assignments, deadlines, and progress.</p>
-      <div class="task-section-actions">
-        <a class="button secondary" href="{% url 'trip_list' %}">Trips</a>
-        <a class="button secondary" href="{% url 'task_template_list' %}">Task Templates</a>
-      </div>
+<link rel="stylesheet" href="{% static 'trips/task_queue.css' %}">
+<div id="task-workspace" data-user="{{ user.pk }}" data-list-url="{% url 'task_list' %}" data-bulk-url="{% url 'task_bulk_update' %}">
+  <div class="queue-heading">
+    <div><p class="page-kicker">Trip operations</p><h1>Tasks</h1><p class="eyebrow">A clear path through your day.</p></div>
+    <div class="queue-heading-actions">
+      {% if perms.trips.view_tasktemplate %}<a href="{% url 'task_template_list' %}" class="template-link">Task Templates</a>{% endif %}
+      {% if perms.trips.add_task %}<a class="button" href="{% url 'task_create' %}?return_to=tasks">+ New task</a>{% endif %}
     </div>
-  </section>
-
-  <section class="task-list-shell">
-  <section class="table-card">
-  <div class="filter-toolbar">
-    <button
-      class="button secondary filter-toggle"
-      type="button"
-      data-filter-toggle="task-filters"
-      aria-expanded="{% if filters_active %}true{% else %}false{% endif %}"
-      aria-controls="task-filters"
-    >
-      <span class="filter-toggle-icon" aria-hidden="true">&#9776;</span>
-      Filters
-    </button>
-    <form method="get" class="filter-grid filter-panel" id="task-filters"{% if not filters_active %} hidden{% endif %}>
-      <div>
-        <label for="trip">Trip</label>
-        <select id="trip" name="trip">
-          <option value="">All trips</option>
-          {% for trip in trips %}
-            <option value="{{ trip.pk }}"{% if filters.trip == trip.pk|stringformat:'s' %} selected{% endif %}>
-              {{ trip.name }}
-            </option>
-          {% endfor %}
-        </select>
+  </div>
+  <nav class="queue-views" aria-label="Task views">
+    {% for tab in view_tabs %}<a href="{{ tab.url }}" data-view="{{ tab.key }}" {% if active_view == tab.key %}aria-current="page"{% endif %}>{{ tab.label }} <span data-count="{{ tab.key }}">{{ tab.count }}</span></a>{% endfor %}
+  </nav>
+  <section class="queue-panel" aria-label="Task queue">
+    <form method="get" id="queue-filters">
+      <input type="hidden" name="view" value="{{ active_view }}">
+      <div class="queue-toolbar">
+        <div class="queue-search"><label class="sr-only" for="task-search">Search tasks or trips</label><input type="search" id="task-search" name="q" value="{{ filters.q }}" placeholder="Search tasks or trips…"><button type="submit" class="secondary">Search</button></div>
+        <button class="secondary" type="button" id="filter-toggle" aria-expanded="{% if filters_active %}true{% else %}false{% endif %}" aria-controls="advanced-filters">Filters{% if filters_active %} • Active{% endif %}</button>
+        <div class="queue-sort"><label for="task-sort">Sort</label><select name="sort" id="task-sort"><option value="due" {% if filters.sort == 'due' %}selected{% endif %}>Due date: earliest</option><option value="latest" {% if filters.sort == 'latest' %}selected{% endif %}>Due date: latest</option><option value="name" {% if filters.sort == 'name' %}selected{% endif %}>Task name</option><option value="trip" {% if filters.sort == 'trip' %}selected{% endif %}>Trip</option></select></div>
       </div>
-      <div>
-        <label for="assigned_to">Assigned to</label>
-        <select id="assigned_to" name="assigned_to">
-          <option value="">All assignees</option>
-          {% for employee in employees %}
-            <option value="{{ employee.pk }}"{% if filters.assigned_to == employee.pk|stringformat:'s' %} selected{% endif %}>
-              {{ employee }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label for="status">Status</label>
-        <select id="status" name="status">
-          <option value="">All statuses</option>
-          {% for status_value, status_label in task_status_choices %}
-            <option value="{{ status_value }}"{% if filters.status == status_value %} selected{% endif %}>
-              {{ status_label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label for="due_date_from">Due date from</label>
-        <input id="due_date_from" type="date" name="due_date_from" value="{{ filters.due_date_from }}">
-      </div>
-      <div>
-        <label for="due_date_to">Due date to</label>
-        <input id="due_date_to" type="date" name="due_date_to" value="{{ filters.due_date_to }}">
-      </div>
-      <div class="actions" style="margin: 0;">
-        <button type="submit">Apply filters</button>
-        <a class="button secondary" href="{% url 'task_list' %}">Clear</a>
+      <div id="advanced-filters" {% if not filters_active %}hidden{% endif %}>
+        <div class="advanced-grid">
+          <div><label for="trip">Trip</label><select id="trip" name="trip"><option value="">All trips</option>{% for trip in trips %}<option value="{{ trip.pk }}" {% if filters.trip == trip.pk|stringformat:'s' %}selected{% endif %}>{{ trip.name }}</option>{% endfor %}</select></div>
+          <div><label for="assigned_to">Assigned to</label><select id="assigned_to" name="assigned_to"><option value="">All assignees</option><option value="unassigned" {% if filters.assigned_to == 'unassigned' %}selected{% endif %}>Unassigned</option>{% for employee in employees %}<option value="{{ employee.pk }}" {% if filters.assigned_to == employee.pk|stringformat:'s' %}selected{% endif %}>{{ employee }}</option>{% endfor %}</select></div>
+          <div><label for="status">Status</label><select id="status" name="status"><option value="">Any status in this view</option>{% for value, label in task_status_choices %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+          <div><label for="due_date_from">Due date from</label><input type="date" name="due_date_from" id="due_date_from" value="{{ filters.due_date_from }}"></div>
+          <div><label for="due_date_to">Due date to</label><input type="date" name="due_date_to" id="due_date_to" value="{{ filters.due_date_to }}"></div>
+        </div>
+        <div class="filter-actions"><button type="submit">Apply filters</button><a href="?view={{ active_view }}" data-reset>Clear filters</a></div>
       </div>
     </form>
-  </div>
-    <div class="table-header">
-      <div>
-        <p class="page-kicker">Task board</p>
-        <h2>All Tasks</h2>
-      </div>
-      <p class="table-intro">Update assignments, status, and due dates here.</p>
-    </div>
-    <table class="responsive-table task-table">
-      <thead>
-        <tr>
-          <th>Task</th>
-          <th>Trip</th>
-          <th>Assigned to / Status / Due</th>
-          <th>Due in</th>
-          <th></th>
-        </tr>
-      </thead>
+    <div class="queue-summary"><span>{{ paginator.count }} task{{ paginator.count|pluralize }}{% if active_view == 'upcoming' %} · Next 7 days{% endif %}{% if filters.q %} · “{{ filters.q }}”{% endif %}</span><span id="refresh-notice" hidden>Queue updated. <a href="?{{ current_querystring }}">Refresh results</a></span><a href="?view=open" data-reset>Reset view</a></div>
+    {% if filter_error %}<p class="queue-error" role="alert">{{ filter_error }}</p>{% endif %}
+    {% if perms.trips.change_task %}
+    <form id="bulk-form" class="bulk-bar" hidden>
+      {% csrf_token %}<strong id="selection-count">0 selected</strong>
+      <label class="sr-only" for="bulk-field">Bulk action</label><select id="bulk-field" name="field"><option value="status">Change status</option><option value="assigned_to">Assign to</option><option value="due_date">Reschedule</option></select>
+      <label class="sr-only" for="bulk-status">New status</label><select id="bulk-status" data-bulk-value="status">{% for value, label in task_status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+      <label class="sr-only" for="bulk-assignee">New assignee</label><select id="bulk-assignee" data-bulk-value="assigned_to" hidden><option value="">Unassigned</option>{% for employee in employees %}<option value="{{ employee.pk }}">{{ employee }}</option>{% endfor %}</select>
+      <label class="sr-only" for="bulk-date">New due date (leave blank to clear)</label><input id="bulk-date" type="date" data-bulk-value="due_date" hidden>
+      <button type="submit">Apply</button><button type="button" class="secondary" id="clear-selection">Cancel</button><span id="bulk-feedback" role="status"></span>
+    </form>
+    {% endif %}
+    <table class="queue-table">
+      <thead><tr><th class="select-col">{% if perms.trips.change_task %}<input type="checkbox" id="select-all" aria-label="Select all tasks on this page">{% endif %}</th><th class="complete-col"><span class="sr-only">Complete</span></th><th>Task / Trip</th><th class="assignee-col">Assigned to</th><th class="status-col">Status</th><th class="due-col">Due</th></tr></thead>
       <tbody>
-        {% for task in tasks %}
-          <tr data-task-row="{{ task.pk }}">
-            <td data-label="Task"><span class="task-name">{{ task.name }}</span></td>
-            <td data-label="Trip"><a class="task-trip-link" href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a></td>
-            <td data-label="Assigned to / Status / Due">
-              <form method="post" action="{% url 'task_quick_update' task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true" data-task-id="{{ task.pk }}">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{% url 'task_list' %}{% if current_querystring %}?{{ current_querystring }}{% endif %}">
-                <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
-                  <option value="">Unassigned</option>
-                  {% for employee in employees %}
-                    <option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>
-                      {{ employee }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <select name="status" aria-label="Status for {{ task.name }}" class="status-select">
-                  {% for status_value, status_label in task_status_choices %}
-                    <option value="{{ status_value }}"{% if task.status == status_value %} selected{% endif %}>
-                      {{ status_label }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <input
-                  type="date"
-                  name="due_date"
-                  aria-label="Due date for {{ task.name }}"
-                  value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
-                >
-                <span class="task-save-state" aria-live="polite"></span>
-              </form>
-            </td>
-            <td data-label="Due in" data-due-in-display>{{ task.due_in_display }}</td>
-            <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="empty-state">No tasks match those filters.</td></tr>
-        {% endfor %}
+      {% for task in tasks %}
+        <tr data-task-id="{{ task.pk }}" data-url="{% url 'task_quick_update' task.pk %}" data-tone="{{ task.queue.tone }}">
+          <td class="select-col">{% if perms.trips.change_task %}<input class="row-select" type="checkbox" aria-label="Select {{ task.name }}">{% endif %}</td>
+          <td class="complete-col">{% if perms.trips.change_task %}<button type="button" class="complete-button" aria-label="{% if task.status == 'done' %}Reopen{% else %}Complete{% endif %} {{ task.name }}" aria-pressed="{% if task.status == 'done' %}true{% else %}false{% endif %}" title="{% if task.status == 'done' %}Reopen task{% else %}Mark complete{% endif %}">{% if task.status == 'done' %}✓{% endif %}</button>{% endif %}</td>
+          <td class="task-col"><button class="task-title" type="button" data-open-task>{{ task.name }}</button><a class="task-trip" href="{% url 'trip_detail' task.trip.pk %}">{{ task.trip.name }}</a><span class="mobile-context">{{ task.queue.assigned_to }} · {{ task.queue.status_label }}</span><div class="row-feedback" role="status"><span data-save-state></span><button type="button" data-retry hidden>Retry</button><button type="button" data-undo hidden>Undo completion</button></div></td>
+          <td class="assignee-col" data-label="Assigned to"><select data-field="assigned_to" aria-label="Assigned to for {{ task.name }}" {% if not perms.trips.change_task %}disabled{% endif %}><option value="">Unassigned</option>{% for employee in employees %}<option value="{{ employee.pk }}" {% if task.assigned_to_id == employee.pk %}selected{% endif %}>{{ employee }}</option>{% endfor %}</select></td>
+          <td class="status-col" data-label="Status"><select data-field="status" aria-label="Status for {{ task.name }}" data-status="{{ task.status }}" {% if not perms.trips.change_task %}disabled{% endif %}>{% for value, label in task_status_choices %}<option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+          <td class="due-col" data-label="Due"><span class="due-label">{{ task.queue.due_label }}</span><input type="date" data-field="due_date" aria-label="Due date for {{ task.name }}" value="{{ task.queue.due_date }}" {% if not perms.trips.change_task %}disabled{% endif %}></td>
+        </tr>
+      {% empty %}<tr><td colspan="6" class="queue-empty"><strong>No tasks here</strong><p>{% if filters_active or filters.q %}Try another search or clear your filters.{% else %}You’re caught up in this view. Check All for the rest of your tasks.{% endif %}</p><a href="?view=all" data-reset>View all tasks</a></td></tr>{% endfor %}
       </tbody>
     </table>
+    <nav class="queue-pagination" aria-label="Task pages"><span>{% if paginator.count %}{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}{% else %}0 tasks{% endif %}</span><div>{% if page_obj.has_previous %}<a class="button secondary" href="?{{ page_query }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}<span>Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>{% if page_obj.has_next %}<a class="button secondary" href="?{{ page_query }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}</div></nav>
   </section>
-  </section>
-
-  <script>
-    document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
-      const panel = document.getElementById(button.dataset.filterToggle);
-      button.addEventListener("click", () => {
-        const willOpen = panel.hasAttribute("hidden");
-        panel.toggleAttribute("hidden");
-        button.setAttribute("aria-expanded", willOpen ? "true" : "false");
-      });
-    });
-
-    document.querySelectorAll(".task-quick-edit-form").forEach((form) => {
-      const fields = form.querySelectorAll("select, input[type='date']");
-      const saveState = form.querySelector(".task-save-state");
-      const row = form.closest("tr");
-      const dueInCell = row?.querySelector("[data-due-in-display]");
-
-      const setSaveState = (message, tone = "") => {
-        if (!saveState) {
-          return;
-        }
-        saveState.textContent = message;
-        saveState.dataset.tone = tone;
-      };
-
-      const setSubmitting = (isSubmitting) => {
-        form.classList.toggle("is-submitting", isSubmitting);
-        fields.forEach((field) => {
-          field.disabled = isSubmitting;
-        });
-      };
-
-      const submitQuickUpdate = async () => {
-        if (form.classList.contains("is-submitting")) {
-          return;
-        }
-
-        const formData = new FormData(form);
-        setSubmitting(true);
-        setSaveState("Saving...", "muted");
-
-        try {
-          const response = await fetch(form.action, {
-            method: "POST",
-            body: formData,
-            headers: {
-              "X-Requested-With": "XMLHttpRequest",
-            },
-          });
-
-          const payload = await response.json();
-          if (!response.ok || !payload.ok) {
-            throw new Error("Unable to save task.");
-          }
-
-          if (dueInCell) {
-            dueInCell.textContent = payload.task.due_in_display;
-          }
-          row?.classList.remove("save-error");
-          row?.classList.add("save-success");
-          window.setTimeout(() => row?.classList.remove("save-success"), 1200);
-          setSaveState("Saved", "success");
-          window.setTimeout(() => setSaveState(""), 1200);
-        } catch (error) {
-          row?.classList.add("save-error");
-          setSaveState("Could not save. Refresh and try again.", "error");
-          window.setTimeout(() => row?.classList.remove("save-error"), 1800);
-        } finally {
-          setSubmitting(false);
-        }
-      };
-
-      fields.forEach((field) => {
-        field.addEventListener("change", submitQuickUpdate);
-      });
-    });
-  </script>
+  <dialog id="task-drawer" aria-labelledby="drawer-heading">
+    <div class="drawer-header"><div><p class="page-kicker">Task details</p><h2 id="drawer-heading">Task</h2></div><button type="button" class="secondary" id="close-drawer" aria-label="Close task details">✕</button></div>
+    <p id="drawer-trip" class="subtle"></p>
+    <form id="drawer-form">
+      {% csrf_token %}
+      <fieldset {% if not perms.trips.change_task %}disabled{% endif %}>
+        <label for="drawer-name">Task name</label><input id="drawer-name" name="name" required maxlength="180">
+        <label for="drawer-assignee">Assigned to</label><select id="drawer-assignee" name="assigned_to"><option value="">Unassigned</option>{% for employee in employees %}<option value="{{ employee.pk }}">{{ employee }}</option>{% endfor %}</select>
+        <label for="drawer-status">Status</label><select id="drawer-status" name="status">{% for value, label in task_status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+        <label for="drawer-due">Due date</label><input type="date" id="drawer-due" name="due_date">
+        <label for="drawer-notes">Notes</label><textarea id="drawer-notes" name="notes" rows="9" placeholder="Add the context needed to get this done…"></textarea>
+      </fieldset>
+      <div class="drawer-footer"><span id="drawer-feedback" role="status"></span>{% if perms.trips.change_task %}<button type="submit">Save changes</button>{% endif %}</div>
+    </form>
+  </dialog>
+  {{ task_data|json_script:"task-data" }}
+  <noscript><p class="queue-error">Enable JavaScript for inline editing, bulk actions, and task details. {% if perms.trips.change_task %}Use these edit links: {% for task in tasks %}<a href="{% url 'task_update' task.pk %}">{{ task.name }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}{% endif %}</p></noscript>
+</div>
+<script src="{% static 'trips/task_queue.js' %}" defer></script>
 {% endblock %}
