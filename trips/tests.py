@@ -220,7 +220,7 @@ class TripCreateAndTaskTemplateViewTests(TestCase):
         self.assertRedirects(response, trip.get_absolute_url())
         self.assertEqual(trip.created_by, self.employee)
 
-    def test_add_all_tasks_assigns_templates_to_trip_creator_in_progress(self):
+    def test_add_all_tasks_assigns_templates_to_trip_creator_with_template_status(self):
         self.client.force_login(self.user)
         trip = Trip.objects.create(
             name="Costa Rica 2026",
@@ -233,6 +233,7 @@ class TripCreateAndTaskTemplateViewTests(TestCase):
         first_template = TaskTemplate.objects.create(
             name="Itinerary/Pricing Confirmed",
             days_to_before_trip=-365,
+            status=TaskTemplate.Status.IN_PROGRESS,
         )
         second_template = TaskTemplate.objects.create(
             name="Trip Page for Website",
@@ -251,7 +252,7 @@ class TripCreateAndTaskTemplateViewTests(TestCase):
         for template in [first_template, second_template]:
             task = trip.tasks.get(source_template=template)
             self.assertEqual(task.assigned_to, self.employee)
-            self.assertEqual(task.status, Task.Status.IN_PROGRESS)
+            self.assertEqual(task.status, template.status)
 
     def test_add_all_tasks_falls_back_to_trip_manager_when_created_by_missing(self):
         self.client.force_login(self.user)
@@ -271,7 +272,7 @@ class TripCreateAndTaskTemplateViewTests(TestCase):
 
         task = trip.tasks.get(source_template=template)
         self.assertEqual(task.assigned_to, self.employee)
-        self.assertEqual(task.status, Task.Status.IN_PROGRESS)
+        self.assertEqual(task.status, Task.Status.NOT_STARTED)
 
     def test_add_task_pack_adds_only_templates_in_selected_pack(self):
         self.client.force_login(self.user)

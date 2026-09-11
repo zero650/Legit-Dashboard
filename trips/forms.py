@@ -127,6 +127,7 @@ class TaskTemplateForm(forms.ModelForm):
             "name",
             "description",
             "default_notes",
+            "status",
             "days_to_before_trip",
             "sort_order",
             "is_active",

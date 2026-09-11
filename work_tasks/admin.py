@@ -255,9 +255,9 @@ class WorkTaskAdmin(admin.ModelAdmin):
 
 @admin.register(WorkTaskTemplate)
 class WorkTaskTemplateAdmin(admin.ModelAdmin):
-    list_display = ("name", "days_to_before_trip", "sort_order", "is_active")
-    list_editable = ("days_to_before_trip", "sort_order", "is_active")
-    list_filter = ("is_active",)
+    list_display = ("name", "status", "days_to_before_trip", "sort_order", "is_active")
+    list_editable = ("status", "days_to_before_trip", "sort_order", "is_active")
+    list_filter = ("status", "is_active")
     search_fields = ("name", "description", "default_notes")
     change_list_template = "admin/work_tasks/worktasktemplate/change_list.html"
 
@@ -324,6 +324,7 @@ class WorkTaskTemplateAdmin(admin.ModelAdmin):
                 "name",
                 "description",
                 "default_notes",
+                "status",
                 "days_to_before_trip",
                 "sort_order",
                 "is_active",
@@ -371,10 +372,21 @@ class WorkTaskTemplateAdmin(admin.ModelAdmin):
                     continue
                 is_active = parsed
 
+            status = TaskTemplate.Status.NOT_STARTED
+            status_raw = (row.get("status") or "").strip()
+            if status_raw:
+                status = self._parse_task_status(status_raw)
+                if status is None:
+                    errors.append(
+                        f"Row {index}: status must be one of not_started, in_progress, done."
+                    )
+                    continue
+
             payload = {
                 "name": name,
                 "description": (row.get("description") or "").strip(),
                 "default_notes": (row.get("default_notes") or "").strip(),
+                "status": status,
                 "days_to_before_trip": days_to_before_trip,
                 "sort_order": sort_order,
                 "is_active": is_active,
@@ -392,6 +404,14 @@ class WorkTaskTemplateAdmin(admin.ModelAdmin):
         if errors:
             raise ValidationError(errors)
         return payloads
+
+    def _parse_task_status(self, value):
+        normalized = value.strip().lower().replace("-", "_").replace(" ", "_")
+        return {
+            "not_started": TaskTemplate.Status.NOT_STARTED,
+            "in_progress": TaskTemplate.Status.IN_PROGRESS,
+            "done": TaskTemplate.Status.DONE,
+        }.get(normalized)
 
     def _parse_bool(self, value):
         normalized = value.strip().lower()
