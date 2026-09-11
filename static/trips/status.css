@@ -1,0 +1,11 @@
+[data-status-tone], [data-task-status] { border-color: transparent; }
+[data-status-tone=amber] { background-color: #fff0d6; color: #80510c; }
+[data-status-tone=blue], [data-task-status=in_progress] { background-color: #eaf0f8; color: #35567b; }
+[data-status-tone=green], [data-task-status=done] { background-color: #e4efe8; color: #214340; }
+[data-status-tone=slate] { background-color: #e8ebef; color: #4a5568; }
+[data-status-tone=purple] { background-color: #eee7f6; color: #694590; }
+[data-status-tone=red] { background-color: #fbe8e5; color: #a33b2f; }
+[data-task-status=not_started] { background-color: #efede8; color: #6d665d; }
+.metric-overdue { font-size: 13px; font-weight: 650; color: var(--muted); }
+.metric-overdue.has-overdue { color: #a33b2f; }
+.metric-overdue:hover { text-decoration: underline; }

@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
@@ -79,9 +80,26 @@ class TripStatus(TimeStampedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def color_tone(self):
+        tones = {
+            "planning": "amber", "on sale": "blue", "completed": "green",
+            "closed": "slate", "cancelled": "red", "canceled": "red",
+        }
+        return tones.get(self.name.strip().lower(), ("purple", "blue", "amber", "green", "slate", "red")[(self.pk or 1) % 6])
+
 
 class Trip(TimeStampedModel):
     name = models.CharField(max_length=180)
+    customer_capacity = models.PositiveIntegerField(
+        null=True, blank=True,
+        validators=[MaxValueValidator(2147483647)],
+        help_text="Maximum number of customers on this trip. Leave blank if undecided.",
+    )
+    is_sold_out = models.BooleanField(
+        "sold out", default=False,
+        help_text="Mark this when the trip has sold out, including past trips.",
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     trip_manager = models.ForeignKey(
@@ -299,6 +317,7 @@ class Task(TimeStampedModel):
             return "-"
         if due_in_days == 0:
             return "Today"
+        day_label = "day" if abs(due_in_days) == 1 else "days"
         if due_in_days < 0:
-            return f"Overdue by {abs(due_in_days)} days"
-        return f"In {due_in_days} days"
+            return f"Overdue by {abs(due_in_days)} {day_label}"
+        return f"In {due_in_days} {day_label}"

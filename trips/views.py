@@ -67,6 +67,10 @@ class TripDashboardView(LoginRequiredMixin, TemplateView):
             start_date__lte=today,
             end_date__gte=today,
         ).count()
+        context["overdue_task_count"] = (
+            Task.objects.exclude(status=Task.Status.DONE).filter(due_date__lt=today).count()
+            if context["can_view_tasks"] else None
+        )
         context["can_view_crm"] = self.request.user.has_perm("crm.view_customer")
         context["top_customers"] = []
         if context["can_view_crm"]:
@@ -140,14 +144,18 @@ class TripListView(LoginRequiredMixin, ListView):
         context["filters"] = filters
         context["filters_active"] = any(filters.values())
         context["current_querystring"] = self.request.GET.urlencode()
+        page_query = self.request.GET.copy()
+        page_query.pop("page", None)
+        context["page_query"] = page_query.urlencode()
         return context
 
 
 class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = "trips.change_trip"
 
+    @transaction.atomic
     def post(self, request, pk):
-        trip = get_object_or_404(Trip, pk=pk)
+        trip = get_object_or_404(Trip.objects.select_for_update(), pk=pk)
         wants_json = request.headers.get("x-requested-with") == "XMLHttpRequest"
         data = request.POST.copy()
         if "trip_leader" not in data:
@@ -158,6 +166,10 @@ class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
             data["status"] = trip.status_id
         if "notes" not in data:
             data["notes"] = trip.notes
+        if "customer_capacity" not in data:
+            data["customer_capacity"] = trip.customer_capacity if trip.customer_capacity is not None else ""
+        if "is_sold_out" not in data:
+            data["is_sold_out"] = trip.is_sold_out
 
         form = TripQuickUpdateForm(data, instance=trip)
         if not form.is_valid():
@@ -169,7 +181,10 @@ class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     },
                     status=400,
                 )
-            messages.error(request, "Please choose a valid leader, manager, or status.")
+            messages.error(request, "Could not save trip. " + " ".join(
+                f"{field.replace('_', ' ').strip().title()}: {error}"
+                for field, errors in form.errors.items() for error in errors
+            ))
         else:
             trip = form.save()
             if wants_json:
@@ -186,6 +201,9 @@ class TripQuickUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
                             "trip_manager": manager_label,
                             "status_id": trip.status_id,
                             "status_label": trip.status.name,
+                            "status_tone": trip.status.color_tone,
+                            "customer_capacity": trip.customer_capacity,
+                            "is_sold_out": trip.is_sold_out,
                         },
                     }
                 )
@@ -372,7 +390,7 @@ class TripDetailView(LoginRequiredMixin, DetailView):
 class TripCreateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Trip
     form_class = TripForm
-    template_name = "trips/form.html"
+    template_name = "trips/trip_form.html"
     permission_required = "trips.add_trip"
 
     def form_valid(self, form):
@@ -384,7 +402,7 @@ class TripCreateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredMixin
 class TripUpdateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Trip
     form_class = TripForm
-    template_name = "trips/form.html"
+    template_name = "trips/trip_form.html"
     permission_required = "trips.change_trip"
 
 

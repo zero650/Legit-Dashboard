@@ -1,239 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ trip.name }} | Legit Dashboard{% endblock %}
 
 {% block content %}
-  <style>
-    .trip-header {
-      align-items: start;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 18px;
-      justify-content: space-between;
-      margin-bottom: 18px;
-    }
-
-    .trip-header-copy {
-      min-width: 240px;
-      flex: 1 1 320px;
-    }
-
-    .trip-header-copy .eyebrow {
-      margin-bottom: 0;
-    }
-
-    .trip-toolbar {
-      align-items: center;
-      background: rgba(255, 255, 255, 0.56);
-      border: 1px solid rgba(92, 78, 63, 0.1);
-      border-radius: 20px;
-      display: flex;
-      flex: 0 1 auto;
-      gap: 10px;
-      justify-content: flex-end;
-      padding: 12px;
-    }
-
-    .trip-toolbar .button,
-    .trip-toolbar button {
-      align-items: center;
-      display: inline-flex;
-      justify-content: center;
-      min-height: 42px;
-      padding: 0 16px;
-    }
-
-    .trip-toolbar form {
-      align-items: center;
-      display: inline-flex;
-      gap: 8px;
-      margin: 0;
-    }
-
-    .trip-toolbar select {
-      min-height: 42px;
-      min-width: 300px;
-      padding: 0 14px;
-      width: auto;
-    }
-
-    .trip-toolbar-link {
-      min-width: 132px;
-    }
-
-    .trip-toolbar-submit {
-      min-width: 154px;
-    }
-
-    .trip-details-form {
-      margin: 0 0 12px;
-    }
-
-    .trip-summary-grid {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: minmax(240px, 1fr) minmax(320px, 2fr);
-    }
-
-    .trip-details-form.is-submitting {
-      opacity: 0.65;
-      pointer-events: none;
-    }
-
-    .trip-detail-select {
-      margin-top: 6px;
-      min-height: 34px;
-      min-width: 0;
-      padding: 6px 8px;
-      width: 100%;
-    }
-
-    .trip-notes-form {
-      margin: 0;
-    }
-
-    .trip-notes-form.is-submitting {
-      opacity: 0.65;
-      pointer-events: none;
-    }
-
-    .trip-notes-textarea {
-      min-height: 220px;
-      resize: vertical;
-    }
-
-    .task-quick-edit-form {
-      align-items: center;
-      display: grid;
-      gap: 6px;
-      grid-template-columns: minmax(150px, 1fr) minmax(120px, 0.72fr) minmax(150px, 0.82fr);
-      margin: 0;
-      max-width: 760px;
-      width: 100%;
-    }
-
-    .task-quick-edit-form select,
-    .task-quick-edit-form input[type="date"] {
-      min-height: 44px;
-      min-width: 0;
-      padding: 6px 8px;
-      width: 100%;
-    }
-
-    .task-quick-edit-form button {
-      min-height: 32px;
-      padding: 5px 10px;
-    }
-
-    .task-quick-edit-form.is-submitting {
-      opacity: 0.65;
-      pointer-events: none;
-    }
-
-    .task-select {
-      margin: 0;
-      width: 16px;
-      height: 16px;
-    }
-
-    .trip-task-table {
-      table-layout: fixed;
-    }
-
-    .trip-task-table th:nth-child(1),
-    .trip-task-table td:nth-child(1) {
-      width: 10%;
-    }
-
-    .trip-task-table th:nth-child(2),
-    .trip-task-table td:nth-child(2) {
-      width: 25%;
-    }
-
-    .trip-task-table th:nth-child(3),
-    .trip-task-table td:nth-child(3) {
-      width: 46%;
-    }
-
-    .trip-task-table th:nth-child(4),
-    .trip-task-table td:nth-child(4) {
-      width: 11%;
-    }
-
-    .trip-task-table th:nth-child(5),
-    .trip-task-table td:nth-child(5) {
-      width: 8%;
-    }
-
-    @media (max-width: 1100px) {
-      .task-quick-edit-form {
-        grid-template-columns: minmax(150px, 1fr) minmax(120px, 0.8fr);
-      }
-
-      .task-quick-edit-form input[type="date"] {
-        grid-column: 1 / -1;
-      }
-    }
-
-    @media (max-width: 680px) {
-      .trip-header {
-        gap: 12px;
-      }
-
-      .trip-header-copy {
-        min-width: 0;
-      }
-
-      .trip-summary-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .trip-toolbar {
-        display: grid;
-        gap: 8px;
-        justify-content: stretch;
-        width: 100%;
-      }
-
-      .trip-toolbar form,
-      .trip-toolbar .button,
-      .trip-toolbar button,
-      .trip-toolbar select {
-        min-width: 0;
-        width: 100%;
-      }
-
-      .trip-detail-select,
-      .trip-notes-textarea {
-        min-height: 48px;
-      }
-
-      .task-quick-edit-form {
-        align-items: stretch;
-        display: grid;
-        gap: 8px;
-        grid-template-columns: 1fr;
-        max-width: none;
-        width: 100%;
-      }
-
-      .task-quick-edit-form input[type="date"] {
-        grid-column: auto;
-      }
-
-      .task-quick-edit-form select,
-      .task-quick-edit-form input[type="date"],
-      .task-quick-edit-form button {
-        min-height: 48px;
-        width: 100%;
-      }
-
-      .task-select {
-        height: 24px;
-        width: 24px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="{% static 'trips/task_queue.css' %}">
+  <link rel="stylesheet" href="{% static 'trips/trip_workspace.css' %}">
   <section class="hero-shell">
     <section class="trip-header">
       <div class="trip-header-copy hero-copy">
@@ -268,10 +40,8 @@
       <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
-        <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
-        <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
         <label for="trip-status-select"><strong>Status</strong></label>
-        <select id="trip-status-select" name="status" class="trip-detail-select" aria-label="Status for {{ trip.name }}">
+        <select id="trip-status-select" name="status" class="trip-detail-select" data-status-tone="{{ trip.status.color_tone }}" aria-label="Status for {{ trip.name }}">
           {% for status in trip_statuses %}
             <option value="{{ status.pk }}"{% if trip.status_id == status.pk %} selected{% endif %}>{{ status.name }}</option>
           {% endfor %}
@@ -281,8 +51,6 @@
       <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
-        <input type="hidden" name="status" value="{{ trip.status_id }}">
-        <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
         <label for="trip-manager-select"><strong>Trip manager</strong></label>
         <select id="trip-manager-select" name="trip_manager" class="trip-detail-select" aria-label="Trip manager for {{ trip.name }}">
           {% for employee in trip_managers %}
@@ -294,8 +62,6 @@
       <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-details-form" data-preserve-scroll="true">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
-        <input type="hidden" name="status" value="{{ trip.status_id }}">
-        <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
         <label for="trip-leader-select"><strong>Trip leader</strong></label>
         <select id="trip-leader-select" name="trip_leader" class="trip-detail-select" aria-label="Trip leader for {{ trip.name }}">
           <option value="">No leader</option>
@@ -304,6 +70,25 @@
           {% endfor %}
         </select>
       </form>
+      {% if perms.trips.change_trip %}
+      <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-capacity-form" data-preserve-scroll="true">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
+        <label for="trip-capacity">Customer capacity</label>
+        <input id="trip-capacity" type="number" name="customer_capacity" min="0" step="1" max="2147483647" value="{{ trip.customer_capacity|default_if_none:'' }}" placeholder="Not set">
+        <small>Maximum number of customers on this trip.</small>
+        <label for="trip-sold-out">Sold out</label>
+        <select id="trip-sold-out" name="is_sold_out">
+          <option value="false"{% if not trip.is_sold_out %} selected{% endif %}>No</option>
+          <option value="true"{% if trip.is_sold_out %} selected{% endif %}>Yes — sold out</option>
+        </select>
+        <small>Record whether this trip sold out, including past trips.</small>
+        <button type="submit" class="secondary">Save capacity &amp; availability</button>
+      </form>
+      {% else %}
+      <p><strong>Customer capacity:</strong> {{ trip.customer_capacity|default_if_none:"Not set" }}</p>
+      <p><strong>Sold out:</strong> {{ trip.is_sold_out|yesno:"Yes,No" }}</p>
+      {% endif %}
     </div>
     <div class="panel">
       <p class="page-kicker">Working notes</p>
@@ -311,9 +96,6 @@
       <form method="post" action="{% url 'trip_quick_update' trip.pk %}" class="trip-notes-form" data-preserve-scroll="true">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ trip.get_absolute_url }}">
-        <input type="hidden" name="status" value="{{ trip.status_id }}">
-        <input type="hidden" name="trip_manager" value="{{ trip.trip_manager_id }}">
-        <input type="hidden" name="trip_leader" value="{{ trip.trip_leader_id|default:'' }}">
         <textarea
           name="notes"
           class="trip-notes-textarea"
@@ -324,7 +106,7 @@
     </div>
   </section>
 
-  <section class="table-card" style="margin-top:18px">
+  <section class="queue-panel trip-task-section" aria-label="Trip tasks">
     <div class="table-header">
       <div>
         <p class="page-kicker">Execution plan</p>
@@ -332,12 +114,11 @@
       </div>
       <p class="table-intro">Assign tasks and update their progress.</p>
     </div>
-    <form
+    {% if perms.trips.change_task %}<form
       id="bulk-task-status-form"
       method="post"
       action="{% url 'trip_bulk_task_status_update' trip.pk %}"
-      class="actions"
-      style="margin: 0 24px 12px;"
+      class="bulk-bar"
     >
       {% csrf_token %}
       <select name="status" aria-label="Bulk task status">
@@ -347,62 +128,37 @@
       </select>
       <button class="button secondary" type="submit">Update selected tasks</button>
     </form>
-    <table class="responsive-table trip-task-table">
-      <thead>
-        <tr>
-          <th>Select</th>
-          <th>Name</th>
-          <th>Assigned to / Status / Due</th>
-          <th>Due in</th>
-          <th></th>
-        </tr>
-      </thead>
+    {% endif %}
+    <table class="queue-table trip-task-table">
+      <thead><tr><th class="select-col"><span class="sr-only">Select</span></th><th>Task</th><th class="assignee-col">Assigned to</th><th class="status-col">Status</th><th class="due-col">Due</th></tr></thead>
       <tbody>
         {% for task in trip.tasks.all %}
-          <tr>
-            <td data-label="Select">
-              <input
-                class="task-select"
-                type="checkbox"
-                name="task_ids"
-                value="{{ task.pk }}"
-                form="bulk-task-status-form"
-                aria-label="Select {{ task.name }}"
-              >
-            </td>
-            <td data-label="Task"><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
-            <td data-label="Assigned to / Status / Due">
-              <form method="post" action="{% url 'trip_task_status_update' trip.pk task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
-                {% csrf_token %}
-                <select name="assigned_to" aria-label="Assigned to for {{ task.name }}" class="assignee-select">
-                  <option value="">Unassigned</option>
-                  {% for employee in employees %}
-                    <option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>
-                      {{ employee }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <select name="status" aria-label="Status for {{ task.name }}" class="status-select">
-                  {% for status_value, status_label in task_status_choices %}
-                    <option value="{{ status_value }}"{% if task.status == status_value %} selected{% endif %}>
-                      {{ status_label }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <input
-                  type="date"
-                  name="due_date"
-                  aria-label="Due date for {{ task.name }}"
-                  value="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
-                >
-              </form>
-            </td>
-            <td data-label="Due in">{{ task.due_in_display }}</td>
-            <td data-label="Actions"><a href="{% url 'task_update' task.pk %}">Edit</a></td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="empty-state">No tasks linked to this trip yet.</td></tr>
-        {% endfor %}
+        <tr data-task-id="{{ task.pk }}" data-tone="{% if task.status == 'done' %}done{% elif task.due_in_days != None and task.due_in_days < 0 %}overdue{% elif task.due_in_days == 0 %}today{% else %}normal{% endif %}">
+          <td class="select-col" data-label="Select">{% if perms.trips.change_task %}<input class="task-select" type="checkbox" name="task_ids" value="{{ task.pk }}" form="bulk-task-status-form" aria-label="Select {{ task.name }}">{% endif %}</td>
+          <td class="task-col" data-label="Task">
+            <a class="trip-title" href="{% url 'task_update' task.pk %}">{{ task.name }}</a>
+            <form id="task-edit-{{ task.pk }}" method="post" action="{% url 'trip_task_status_update' trip.pk task.pk %}" class="task-quick-edit-form" data-preserve-scroll="true">
+              {% csrf_token %}
+              <noscript>{% if perms.trips.change_task %}<button type="submit">Save task</button>{% endif %}</noscript>
+            </form>
+          </td>
+          <td class="assignee-col" data-label="Assigned to">
+            <select form="task-edit-{{ task.pk }}" name="assigned_to" aria-label="Assigned to for {{ task.name }}" {% if not perms.trips.change_task %}disabled{% endif %}>
+              <option value="">Unassigned</option>
+              {% for employee in employees %}<option value="{{ employee.pk }}"{% if task.assigned_to_id == employee.pk %} selected{% endif %}>{{ employee }}</option>{% endfor %}
+            </select>
+          </td>
+          <td class="status-col" data-label="Status">
+            <select form="task-edit-{{ task.pk }}" name="status" data-field="status" data-status="{{ task.status }}" aria-label="Status for {{ task.name }}" {% if not perms.trips.change_task %}disabled{% endif %}>
+              {% for value, label in task_status_choices %}<option value="{{ value }}"{% if task.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </td>
+          <td class="due-col" data-label="Due">
+            <span class="due-label">{{ task.due_in_display }}</span>
+            <input form="task-edit-{{ task.pk }}" type="date" name="due_date" aria-label="Due date for {{ task.name }}" value="{{ task.due_date|date:'Y-m-d' }}" {% if not perms.trips.change_task %}disabled{% endif %}>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="queue-empty"><strong>No tasks yet</strong><p>Add a task or a task pack to plan this trip.</p></td></tr>{% endfor %}
       </tbody>
     </table>
   </section>
@@ -440,12 +196,13 @@
     });
 
     document.querySelectorAll(".task-quick-edit-form").forEach((form) => {
-      form.querySelectorAll("select, input[type='date']").forEach((field) => {
+      Array.from(form.elements).filter((field) => field.matches("select, input[type='date']")).forEach((field) => {
         field.addEventListener("change", () => {
           if (form.classList.contains("is-submitting")) {
             return;
           }
           form.classList.add("is-submitting");
+          form.closest("tr").dataset.saving = "true";
           form.requestSubmit();
         });
       });

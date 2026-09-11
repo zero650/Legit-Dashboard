@@ -20,7 +20,7 @@
     {% if can_view_tasks %}<div class="panel metric">
       <span class="metric-label">Open tasks</span>
       <strong>{{ open_task_count }}</strong>
-      <span class="metric-note">Across all trips</span>
+      <a class="metric-overdue{% if overdue_task_count %} has-overdue{% endif %}" href="{% url 'task_list' %}?view=overdue">{{ overdue_task_count }} overdue</a>
     </div>{% endif %}
     <div class="panel metric">
       <span class="metric-label">Traveling now</span>
@@ -53,7 +53,7 @@
             <td data-label="Trip"><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a>{% if trip.trip_leader %}<br>{{ trip.trip_leader }}{% endif %}</td>
             <td data-label="Dates">{{ trip.start_date }} - {{ trip.end_date }}</td>
             <td data-label="Manager">{{ trip.trip_manager }}</td>
-            <td data-label="Status"><span class="status">{{ trip.status }}</span></td>
+            <td data-label="Status"><span class="status" data-status-tone="{{ trip.status.color_tone }}">{{ trip.status }}</span></td>
             <td data-label="Open tasks">{{ trip.open_tasks }}{% if perms.trips.add_task %}<br><a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>{% endif %}</td>
           </tr>
         {% empty %}
@@ -87,7 +87,7 @@
             <td data-label="Task"><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
             <td data-label="Trip"><a href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a></td>
             <td data-label="Assigned to">{{ task.assigned_to|default:"Unassigned" }}</td>
-            <td data-label="Status"><span class="status">{{ task.get_status_display }}</span></td>
+            <td data-label="Status"><span class="status" data-task-status="{{ task.status }}">{{ task.get_status_display }}</span></td>
             <td data-label="Due">{{ task.due_date|default:"No due date" }}</td>
           </tr>
         {% empty %}
