@@ -17,6 +17,12 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+class TaskStatus(models.TextChoices):
+    NOT_STARTED = "not_started", "Not Started"
+    IN_PROGRESS = "in_progress", "In Progress"
+    DONE = "done", "Done"
+
+
 class Employee(TimeStampedModel):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -148,9 +154,17 @@ class Trip(TimeStampedModel):
 
 
 class TaskTemplate(TimeStampedModel):
+    Status = TaskStatus
+
     name = models.CharField(max_length=180, unique=True)
     description = models.TextField(blank=True)
     default_notes = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=TaskStatus.choices,
+        default=TaskStatus.NOT_STARTED,
+        help_text="Status assigned to new tasks created from this template.",
+    )
     days_to_before_trip = models.IntegerField(
         null=True,
         blank=True,
@@ -184,6 +198,7 @@ class TaskTemplate(TimeStampedModel):
             name=self.name,
             trip=trip,
             notes=self.default_notes,
+            status=self.status,
             days_to_before_trip=self.days_to_before_trip,
             due_date=due_date,
             source_template=self,
@@ -213,10 +228,7 @@ class TaskTemplatePack(TimeStampedModel):
 
 
 class Task(TimeStampedModel):
-    class Status(models.TextChoices):
-        NOT_STARTED = "not_started", "Not Started"
-        IN_PROGRESS = "in_progress", "In Progress"
-        DONE = "done", "Done"
+    Status = TaskStatus
 
     name = models.CharField(max_length=180)
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="tasks")
@@ -237,8 +249,8 @@ class Task(TimeStampedModel):
     )
     status = models.CharField(
         max_length=20,
-        choices=Status.choices,
-        default=Status.NOT_STARTED,
+        choices=TaskStatus.choices,
+        default=TaskStatus.NOT_STARTED,
     )
     notes = models.TextField(blank=True)
     days_to_before_trip = models.IntegerField(

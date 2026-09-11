@@ -138,8 +138,8 @@ class WorkTasksAdminTests(TestCase):
         self.client.force_login(user)
 
         csv_content = (
-            "name,description,default_notes,days_to_before_trip,sort_order,is_active\n"
-            "Collect Waivers,Waiver collection step,Review missing waivers,-45,7,true\n"
+            "name,description,default_notes,status,days_to_before_trip,sort_order,is_active\n"
+            "Collect Waivers,Waiver collection step,Review missing waivers,in_progress,-45,7,true\n"
         )
         upload = SimpleUploadedFile(
             "task_templates.csv",
@@ -157,6 +157,7 @@ class WorkTasksAdminTests(TestCase):
         template = TaskTemplate.objects.get(name="Collect Waivers")
         self.assertEqual(template.description, "Waiver collection step")
         self.assertEqual(template.default_notes, "Review missing waivers")
+        self.assertEqual(template.status, Task.Status.IN_PROGRESS)
         self.assertEqual(template.days_to_before_trip, -45)
         self.assertEqual(template.sort_order, 7)
         self.assertTrue(template.is_active)
@@ -177,8 +178,8 @@ class WorkTasksAdminTests(TestCase):
         self.client.force_login(user)
 
         csv_content = (
-            "name,description,default_notes,days_to_before_trip,sort_order,is_active\n"
-            "Collect Waivers,Updated description,Updated notes,-60,9,yes\n"
+            "name,description,default_notes,status,days_to_before_trip,sort_order,is_active\n"
+            "Collect Waivers,Updated description,Updated notes,done,-60,9,yes\n"
         )
         upload = SimpleUploadedFile(
             "task_templates.csv",
@@ -196,6 +197,7 @@ class WorkTasksAdminTests(TestCase):
         template = TaskTemplate.objects.get(name="Collect Waivers")
         self.assertEqual(template.description, "Updated description")
         self.assertEqual(template.default_notes, "Updated notes")
+        self.assertEqual(template.status, Task.Status.DONE)
         self.assertEqual(template.days_to_before_trip, -60)
         self.assertEqual(template.sort_order, 9)
         self.assertTrue(template.is_active)

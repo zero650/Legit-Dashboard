@@ -403,7 +403,6 @@ class ApplyTaskTemplatesView(LoginRequiredMixin, PermissionRequiredMixin, View):
             templates = TaskTemplate.objects.filter(is_active=True)
         created_count = trip.apply_task_templates(
             assigned_to=assignee,
-            status=Task.Status.IN_PROGRESS,
             templates=templates,
         )
         if created_count:
