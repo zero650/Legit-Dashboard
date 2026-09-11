@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ form_title }} | Legit Dashboard{% endblock %}
+{% block content %}
+  <link rel="stylesheet" href="{% static 'trips/task_queue.css' %}">
+  <link rel="stylesheet" href="{% static 'trips/trip_workspace.css' %}">
+  <div class="queue-heading">
+    <div><p class="page-kicker">Trip operations</p><h1>{{ form_title }}</h1><p class="eyebrow">Plan the dates, team, and customer capacity for your trip.</p></div>
+  </div>
+  <form method="post" class="fields trip-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="full-width">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div class="{% if field.name == 'name' or field.name == 'notes' %}full-width{% endif %}">
+        {% if field.name == 'is_sold_out' %}
+          <label class="sold-out-checkbox" for="{{ field.id_for_label }}">{{ field }} {{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {{ field.errors }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="full-width filter-actions"><button type="submit">Save trip</button><a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'trip_list' %}{% endif %}">Cancel</a></div>
+  </form>
+{% endblock %}

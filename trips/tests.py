@@ -348,6 +348,31 @@ class TripDashboardTests(TestCase):
         self.employee.roles.add(staff_role)
         self.status = TripStatus.objects.create(name="Planning")
 
+    def test_dashboard_overdue_count_only_includes_unfinished_past_due_tasks(self):
+        today = timezone.localdate()
+        trip = Trip.objects.create(name="Count test", start_date=today, end_date=today,
+                                   trip_manager=self.employee, status=self.status)
+        for status, due_date in [
+            (Task.Status.NOT_STARTED, today - timedelta(days=1)),
+            (Task.Status.IN_PROGRESS, today - timedelta(days=2)),
+            (Task.Status.DONE, today - timedelta(days=3)),
+            (Task.Status.NOT_STARTED, today),
+            (Task.Status.NOT_STARTED, today + timedelta(days=1)),
+            (Task.Status.NOT_STARTED, None),
+        ]:
+            Task.objects.create(name="Count task", trip=trip, status=status, due_date=due_date)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual(response.context["open_task_count"], 5)
+        self.assertEqual(response.context["overdue_task_count"], 2)
+        self.assertContains(response, "2 overdue")
+        self.assertContains(response, 'data-status-tone="amber"')
+        self.assertContains(response, 'data-task-status="in_progress"')
+        self.user.user_permissions.clear()
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertIsNone(response.context["overdue_task_count"])
+        self.assertNotContains(response, "2 overdue")
+
     def test_dashboard_shows_running_trip_count_and_add_task_links(self):
         today = timezone.localdate()
         running_status = TripStatus.objects.create(name="On Sale", is_active=True)
@@ -495,6 +520,70 @@ class TripListQuickUpdateTests(TestCase):
             trip_leader=self.second_host_employee,
             status=self.second_status,
         )
+
+    def test_trip_capacity_and_sold_out_create_and_full_edit(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="add_trip"))
+        self.client.force_login(self.user)
+        data = {"name": "Capacity trip", "start_date": "2026-10-01", "end_date": "2026-10-08",
+                "trip_manager": self.manager_employee.pk, "status": self.status.pk,
+                "customer_capacity": "18", "is_sold_out": "on"}
+        response = self.client.post(reverse("trip_create"), data)
+        trip = Trip.objects.get(name="Capacity trip")
+        self.assertRedirects(response, trip.get_absolute_url())
+        self.assertEqual(trip.customer_capacity, 18)
+        self.assertTrue(trip.is_sold_out)
+        data["customer_capacity"] = "24"
+        data.pop("is_sold_out")
+        response = self.client.post(reverse("trip_update", args=[trip.pk]), data)
+        self.assertRedirects(response, trip.get_absolute_url())
+        trip.refresh_from_db()
+        self.assertEqual(trip.customer_capacity, 24)
+        self.assertFalse(trip.is_sold_out)
+
+    def test_capacity_quick_update_preserves_other_fields_and_can_clear_values(self):
+        self.client.force_login(self.user)
+        url = reverse("trip_quick_update", args=[self.trip.pk])
+        response = self.client.post(url, {"customer_capacity": "20", "is_sold_out": "true"},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["trip"]["customer_capacity"], 20)
+        self.assertTrue(response.json()["trip"]["is_sold_out"])
+        self.client.post(url, {"trip_manager": self.second_manager_employee.pk})
+        self.client.post(url, {"status": self.second_status.pk})
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.trip_manager, self.second_manager_employee)
+        self.assertEqual(self.trip.trip_leader, self.host_employee)
+        self.assertEqual(self.trip.customer_capacity, 20)
+        self.assertTrue(self.trip.is_sold_out)
+        response = self.client.post(url, {"customer_capacity": "", "is_sold_out": "false"},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.trip.refresh_from_db()
+        self.assertIsNone(self.trip.customer_capacity)
+        self.assertFalse(self.trip.is_sold_out)
+
+    def test_invalid_capacity_does_not_save_any_changes(self):
+        self.client.force_login(self.user)
+        for value in ["-1", "1.5", "many", "2147483648"]:
+            with self.subTest(value=value):
+                response = self.client.post(reverse("trip_quick_update", args=[self.trip.pk]),
+                    {"customer_capacity": value, "is_sold_out": "true"},
+                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("customer_capacity", response.json()["errors"])
+                self.trip.refresh_from_db()
+                self.assertIsNone(self.trip.customer_capacity)
+                self.assertFalse(self.trip.is_sold_out)
+
+    def test_capacity_update_requires_trip_change_permission(self):
+        self.user.user_permissions.clear()
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("trip_quick_update", args=[self.trip.pk]),
+                                    {"customer_capacity": "20", "is_sold_out": "true"})
+        self.assertEqual(response.status_code, 403)
+        self.trip.refresh_from_db()
+        self.assertIsNone(self.trip.customer_capacity)
+        self.assertFalse(self.trip.is_sold_out)
 
     def test_trip_list_shows_inline_manager_and_leader_dropdowns(self):
         self.client.force_login(self.user)

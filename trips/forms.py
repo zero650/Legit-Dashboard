@@ -17,6 +17,8 @@ class TripForm(forms.ModelForm):
             "trip_manager",
             "status",
             "trip_leader",
+            "customer_capacity",
+            "is_sold_out",
             "notes",
         ]
         widgets = {
@@ -26,6 +28,9 @@ class TripForm(forms.ModelForm):
         }
         labels = {
             "trip_leader": "Trip leader / host",
+        }
+        help_texts = {
+            "notes": "Additional details and planning notes for this trip.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -199,7 +204,7 @@ class TaskWorkspaceUpdateForm(TaskQuickUpdateForm):
 class TripQuickUpdateForm(forms.ModelForm):
     class Meta:
         model = Trip
-        fields = ["trip_leader", "trip_manager", "status", "notes"]
+        fields = ["trip_leader", "trip_manager", "status", "notes", "customer_capacity", "is_sold_out"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
