@@ -32,9 +32,8 @@ class CustomerForm(forms.ModelForm):
 class CustomerCsvImportForm(forms.Form):
     csv_file = forms.FileField(
         help_text=(
-            "Required columns: First_Name, Last_Name, Email. Optional columns: "
-            "Phone Number, Address, City, Postal, State, Passport Number, "
-            "Passport Expiration date, Notes."
+            "Accepts WooCommerce customer exports with Name and Email, or CRM CSVs "
+            "with First_Name, Last_Name, and Email."
         )
     )
 

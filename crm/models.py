@@ -17,6 +17,8 @@ class Customer(models.Model):
     postal = models.CharField("Postal code", max_length=20, blank=True)
     passport_number = models.CharField(max_length=80, blank=True)
     passport_expiration_date = models.DateField(null=True, blank=True)
+    woocommerce_order_count = models.PositiveIntegerField(default=0)
+    woocommerce_total_spend = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

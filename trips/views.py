@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Count, Q
+from django.db.models import Count, ExpressionWrapper, F, IntegerField, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
@@ -66,7 +66,12 @@ class TripDashboardView(LoginRequiredMixin, TemplateView):
         context["top_customers"] = []
         if context["can_view_crm"]:
             context["top_customers"] = (
-                Customer.objects.annotate(trip_count=Count("trip_history"))
+                Customer.objects.annotate(
+                    trip_count=ExpressionWrapper(
+                        Count("trip_history") + F("woocommerce_order_count"),
+                        output_field=IntegerField(),
+                    )
+                )
                 .filter(trip_count__gt=0)
                 .order_by("-trip_count", "last_name", "first_name")[:5]
             )

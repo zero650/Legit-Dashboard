@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -365,6 +366,40 @@ class CustomerViewTests(TestCase):
         self.assertEqual(customer.phone_number, "555-1212")
         self.assertEqual(customer.passport_expiration_date.isoformat(), "2030-01-15")
 
+    def test_can_import_customers_from_woocommerce_csv(self):
+        csv_file = SimpleUploadedFile(
+            "woocommerce-customers.csv",
+            (
+                "Name,Username,Last active,Date registered,Email,Orders,Total spend,AOV,"
+                "Country / Region,City,Region,Postal code\n"
+                "Cynthia Fulk Lago,,2026-09-09T20:25:05,,clago06@gmail.com,2,1600,800,"
+                "US,Fort Lauderdale,FL,33315\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("crm_customer_import"),
+            {"csv_file": csv_file},
+        )
+
+        self.assertRedirects(response, reverse("crm_customer_list"))
+        customer = Customer.objects.get(email="clago06@gmail.com")
+        self.assertEqual(customer.first_name, "Cynthia")
+        self.assertEqual(customer.last_name, "Fulk Lago")
+        self.assertEqual(customer.city, "Fort Lauderdale")
+        self.assertEqual(customer.state, "FL")
+        self.assertEqual(customer.postal, "33315")
+        self.assertEqual(customer.woocommerce_order_count, 2)
+        self.assertEqual(customer.woocommerce_total_spend, Decimal("1600.00"))
+        self.assertIn("WooCommerce last active: 2026-09-09T20:25:05", customer.notes)
+        self.assertIn("WooCommerce country/region: US", customer.notes)
+
+        response = self.client.get(customer.get_absolute_url())
+        self.assertContains(response, "Trip count")
+        self.assertContains(response, "<strong>2</strong>", html=True)
+        self.assertContains(response, "$1600.00")
+
     def test_customer_import_updates_existing_customer_by_email(self):
         customer = Customer.objects.create(
             first_name="Avery",
@@ -387,6 +422,39 @@ class CustomerViewTests(TestCase):
         customer.refresh_from_db()
         self.assertEqual(customer.city, "Boulder")
         self.assertEqual(Customer.objects.filter(email="avery@example.com").count(), 1)
+
+    def test_customer_import_updates_existing_customer_from_woocommerce_csv(self):
+        customer = Customer.objects.create(
+            first_name="Amy",
+            last_name="Margolis",
+            email="amymargolis7@gmail.com",
+            city="Old City",
+        )
+        csv_file = SimpleUploadedFile(
+            "woocommerce-customers.csv",
+            (
+                "Name,Username,Last active,Date registered,Email,Orders,Total spend,AOV,"
+                "Country / Region,City,Region,Postal code\n"
+                "Amy Margolis,amy.margolis,2026-09-10T21:44:52,2025-11-19T01:34:57,"
+                "amymargolis7@gmail.com,2,2250,1125,US,Stratham,NH,3885\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("crm_customer_import"),
+            {"csv_file": csv_file},
+        )
+
+        self.assertRedirects(response, reverse("crm_customer_list"))
+        customer.refresh_from_db()
+        self.assertEqual(customer.city, "Stratham")
+        self.assertEqual(customer.state, "NH")
+        self.assertEqual(customer.postal, "3885")
+        self.assertEqual(customer.woocommerce_order_count, 2)
+        self.assertEqual(customer.woocommerce_total_spend, Decimal("2250.00"))
+        self.assertIn("WooCommerce username: amy.margolis", customer.notes)
+        self.assertEqual(Customer.objects.filter(email="amymargolis7@gmail.com").count(), 1)
 
     def test_customer_import_rejects_missing_required_columns(self):
         csv_file = SimpleUploadedFile(
