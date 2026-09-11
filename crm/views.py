@@ -206,10 +206,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         return super().form_valid(form)
 
     def import_customers(self, csv_file):
-        try:
-            decoded = csv_file.read().decode("utf-8-sig")
-        except UnicodeDecodeError as exc:
-            raise ValidationError("Upload a UTF-8 encoded CSV file.") from exc
+        decoded = self.decode_csv_file(csv_file)
 
         reader = csv.DictReader(io.StringIO(decoded))
         if not reader.fieldnames:
@@ -233,6 +230,16 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
                 imported_count += 1
 
         return imported_count, updated_count
+
+    @staticmethod
+    def decode_csv_file(csv_file):
+        raw_csv = csv_file.read()
+        for encoding in ["utf-8-sig", "utf-16", "cp1252", "mac_roman", "latin-1"]:
+            try:
+                return raw_csv.decode(encoding)
+            except UnicodeDecodeError:
+                continue
+        raise ValidationError("Upload a CSV file encoded as UTF-8, UTF-16, Windows-1252, or Mac Roman.")
 
     def validate_required_columns(self, field_map):
         mapped_fields = set(field_map.values())
