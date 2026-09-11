@@ -400,6 +400,36 @@ class CustomerViewTests(TestCase):
         self.assertContains(response, "<strong>2</strong>", html=True)
         self.assertContains(response, "$1600.00")
 
+    def test_can_import_customers_from_alternate_woocommerce_headers(self):
+        csv_file = SimpleUploadedFile(
+            "woocommerce-customers.csv",
+            (
+                "Display name,Billing email,Orders,Money spent,AOV,Location,"
+                "Billing city,Billing state,Postcode,Billing phone,Billing address 1\n"
+                "Sam Traveler,sam@example.com,4,\"$2,250.50\",562.63,US,"
+                "Austin,TX,78701,555-3434,456 River Rd\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("crm_customer_import"),
+            {"csv_file": csv_file},
+        )
+
+        self.assertRedirects(response, reverse("crm_customer_list"))
+        customer = Customer.objects.get(email="sam@example.com")
+        self.assertEqual(customer.first_name, "Sam")
+        self.assertEqual(customer.last_name, "Traveler")
+        self.assertEqual(customer.city, "Austin")
+        self.assertEqual(customer.state, "TX")
+        self.assertEqual(customer.postal, "78701")
+        self.assertEqual(customer.phone_number, "555-3434")
+        self.assertEqual(customer.address, "456 River Rd")
+        self.assertEqual(customer.woocommerce_order_count, 4)
+        self.assertEqual(customer.woocommerce_total_spend, Decimal("2250.50"))
+        self.assertIn("WooCommerce country/region: US", customer.notes)
+
     def test_customer_import_updates_existing_customer_by_email(self):
         customer = Customer.objects.create(
             first_name="Avery",

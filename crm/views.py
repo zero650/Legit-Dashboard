@@ -123,23 +123,37 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
 
     column_aliases = {
         "name": "full_name",
+        "display_name": "full_name",
+        "customer_name": "full_name",
         "first_name": "first_name",
         "firstname": "first_name",
         "first": "first_name",
+        "billing_first_name": "first_name",
         "last_name": "last_name",
         "lastname": "last_name",
         "last": "last_name",
+        "billing_last_name": "last_name",
         "email": "email",
+        "billing_email": "email",
         "phone_number": "phone_number",
         "phone": "phone_number",
+        "billing_phone": "phone_number",
         "address": "address",
+        "address_1": "address",
+        "billing_address_1": "address",
+        "billing_address": "address",
         "city": "city",
+        "billing_city": "city",
         "postal": "postal",
         "postal_code": "postal",
+        "postcode": "postal",
+        "billing_postcode": "postal",
+        "billing_postal_code": "postal",
         "zip": "postal",
         "zip_code": "postal",
         "state": "state",
         "region": "state",
+        "billing_state": "state",
         "passport_number": "passport_number",
         "passport": "passport_number",
         "passport_expiration_date": "passport_expiration_date",
@@ -150,9 +164,14 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         "last_active": "woocommerce_last_active",
         "date_registered": "woocommerce_date_registered",
         "orders": "woocommerce_order_count",
+        "order_count": "woocommerce_order_count",
         "total_spend": "woocommerce_total_spend",
+        "total_spent": "woocommerce_total_spend",
+        "money_spent": "woocommerce_total_spend",
         "aov": "woocommerce_aov",
         "country_region": "woocommerce_country_region",
+        "location": "woocommerce_country_region",
+        "billing_country": "woocommerce_country_region",
     }
     customer_fields = [
         "first_name",
@@ -170,6 +189,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         "notes",
     ]
     required_fields = {"first_name", "last_name", "email"}
+    row_required_fields = {"first_name", "email"}
 
     def form_valid(self, form):
         try:
@@ -238,7 +258,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         rows = []
         errors = []
         for index, row in enumerate(reader, start=2):
-            if not any((value or "").strip() for value in row.values()):
+            if not any(self.clean_cell(value) for key, value in row.items() if key is not None):
                 continue
 
             row_errors = []
@@ -247,7 +267,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
             customer_data["woocommerce_total_spend"] = Decimal("0.00")
             woocommerce_data = {}
             for source_column, target_field in field_map.items():
-                value = (row.get(source_column) or "").strip()
+                value = self.clean_cell(row.get(source_column))
                 if target_field == "full_name":
                     first_name, last_name = self.split_full_name(value)
                     customer_data["first_name"] = customer_data["first_name"] or first_name
@@ -268,7 +288,7 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
             if woocommerce_notes := self.build_woocommerce_notes(woocommerce_data):
                 customer_data["notes"] = self.combine_notes(customer_data["notes"], woocommerce_notes)
 
-            for required_field in self.required_fields:
+            for required_field in self.row_required_fields:
                 if not customer_data[required_field]:
                     row_errors.append(f"Row {index}: {required_field} is required.")
 
@@ -292,6 +312,14 @@ class CustomerCsvImportView(LoginRequiredMixin, PermissionRequiredMixin, FormVie
         if errors:
             raise ValidationError(errors)
         return rows
+
+    @staticmethod
+    def clean_cell(value):
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            return " ".join(str(item).strip() for item in value if str(item).strip())
+        return str(value).strip()
 
     @staticmethod
     def split_full_name(full_name):
