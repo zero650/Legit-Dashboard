@@ -430,6 +430,50 @@ class CustomerViewTests(TestCase):
         self.assertEqual(customer.woocommerce_total_spend, Decimal("2250.50"))
         self.assertIn("WooCommerce country/region: US", customer.notes)
 
+    def test_can_import_customers_from_utf16_csv(self):
+        csv_file = SimpleUploadedFile(
+            "customers-utf16.csv",
+            (
+                "Name,Email,Orders,Total spend\n"
+                "Nina Import,nina@example.com,1,725\n"
+            ).encode("utf-16"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("crm_customer_import"),
+            {"csv_file": csv_file},
+        )
+
+        self.assertRedirects(response, reverse("crm_customer_list"))
+        customer = Customer.objects.get(email="nina@example.com")
+        self.assertEqual(customer.first_name, "Nina")
+        self.assertEqual(customer.last_name, "Import")
+        self.assertEqual(customer.woocommerce_order_count, 1)
+        self.assertEqual(customer.woocommerce_total_spend, Decimal("725.00"))
+
+    def test_can_import_customers_from_windows_1252_csv(self):
+        csv_file = SimpleUploadedFile(
+            "customers-windows.csv",
+            b"Name,Email,Notes\n"
+            b"Andre Client,andre@example.com,VIP traveler with caf\xe9 meeting\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("crm_customer_import"),
+            {"csv_file": csv_file},
+        )
+
+        self.assertRedirects(response, reverse("crm_customer_list"))
+        customer = Customer.objects.get(email="andre@example.com")
+        self.assertEqual(customer.first_name, "Andre")
+        self.assertEqual(customer.last_name, "Client")
+        self.assertEqual(
+            customer.notes.encode("cp1252"),
+            b"VIP traveler with caf\xe9 meeting",
+        )
+
     def test_customer_import_updates_existing_customer_by_email(self):
         customer = Customer.objects.create(
             first_name="Avery",
