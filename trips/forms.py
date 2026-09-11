@@ -190,6 +190,11 @@ class TaskQuickUpdateForm(forms.ModelForm):
         return task
 
 
+class TaskWorkspaceUpdateForm(TaskQuickUpdateForm):
+    class Meta(TaskQuickUpdateForm.Meta):
+        fields = ["name", "notes", "assigned_to", "status", "due_date"]
+
+
 class TripQuickUpdateForm(forms.ModelForm):
     class Meta:
         model = Trip
