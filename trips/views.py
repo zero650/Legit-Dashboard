@@ -41,20 +41,50 @@ class TripDashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         today = timezone.localdate()
-        context["upcoming_trips"] = (
-            Trip.objects.select_related("trip_manager", "trip_manager__user", "status")
-            .filter(end_date__gte=today)
-            .annotate(open_tasks=Count("tasks", filter=~Q(tasks__status=Task.Status.DONE)))
-            .order_by("start_date")[:8]
-        )
+        context["today"] = today
+        context["can_view_trips"] = self.request.user.has_perm("trips.view_trip")
         context["can_view_tasks"] = self.request.user.has_perm("trips.view_task")
-        context["open_tasks"] = []
-        if context["can_view_tasks"]:
-            context["open_tasks"] = (
-                Task.objects.select_related("trip", "assigned_to", "assigned_to__user")
-                .exclude(status=Task.Status.DONE)
-                .order_by("due_date", "created_at")[:12]
+        context["can_change_tasks"] = self.request.user.has_perm("trips.change_task")
+        context["departures"] = []
+        context["departure_count"] = 0
+        if context["can_view_trips"]:
+            departures = (
+                Trip.objects.select_related("trip_manager__user", "status")
+                .filter(start_date__gte=today, start_date__lte=today + timedelta(days=30))
+                .exclude(status__name__iexact="Completed")
+                .exclude(status__name__iexact="Closed")
+                .exclude(status__name__iexact="Cancelled")
+                .exclude(status__name__iexact="Canceled")
+                .annotate(open_tasks=Count("tasks", filter=~Q(tasks__status=Task.Status.DONE)))
+                .order_by("start_date", "pk")
             )
+            context["departure_count"] = departures.count()
+            context["departures"] = list(departures)
+            for trip in context["departures"]:
+                trip.days_until_departure = (trip.start_date - today).days
+        context["my_tasks"] = []
+        context["unassigned_tasks"] = []
+        context["my_task_count"] = 0
+        context["unassigned_task_count"] = 0
+        context["unassigned_overdue_count"] = 0
+        if context["can_view_tasks"]:
+            unfinished = (
+                Task.objects.select_related("trip", "assigned_to__user")
+                .exclude(status=Task.Status.DONE)
+                .order_by(F("due_date").asc(nulls_last=True), "pk")
+            )
+            mine = unfinished.filter(
+                assigned_to__user=self.request.user,
+                due_date__lte=today + timedelta(days=7),
+            )
+            unassigned = unfinished.filter(assigned_to__isnull=True)
+            context["my_task_count"] = mine.count()
+            context["unassigned_task_count"] = unassigned.count()
+            context["unassigned_overdue_count"] = unassigned.filter(due_date__lt=today).count()
+            context["my_tasks"] = list(mine[:8])
+            context["unassigned_tasks"] = list(unassigned[:6])
+            for task in context["my_tasks"] + context["unassigned_tasks"]:
+                task.attention = task_payload(task)
         context["trip_count"] = Trip.objects.count()
         context["open_task_count"] = (
             Task.objects.exclude(status=Task.Status.DONE).count()
@@ -619,4 +649,6 @@ class TaskUpdateView(FormTitleMixin, LoginRequiredMixin, PermissionRequiredMixin
     permission_required = "trips.change_task"
 
     def get_success_url(self):
+        if self.request.GET.get("return_to") == "dashboard":
+            return reverse_lazy("trip_dashboard")
         return self.object.trip.get_absolute_url()

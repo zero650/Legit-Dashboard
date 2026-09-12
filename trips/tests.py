@@ -341,7 +341,7 @@ class TripDashboardTests(TestCase):
         self.employee = Employee.objects.create(user=self.user)
         self.user.user_permissions.add(
             *Permission.objects.filter(
-                codename__in=["view_task", "add_task", "view_customer"]
+                codename__in=["view_trip", "view_task", "add_task", "view_customer"]
             )
         )
         staff_role, _ = Group.objects.get_or_create(name="Staff")
@@ -470,6 +470,117 @@ class TripDashboardTests(TestCase):
 
         self.assertIn("default-src 'self'", response["Content-Security-Policy"])
         self.assertEqual(response["Cross-Origin-Resource-Policy"], "same-origin")
+
+
+    def make_attention_trip(self, name="Upcoming departure", days=10, status=None):
+        today = timezone.localdate()
+        return Trip.objects.create(name=name, start_date=today + timedelta(days=days),
+                                   end_date=today + timedelta(days=days + 5),
+                                   trip_manager=self.employee, status=status or self.status)
+
+    def test_my_work_filters_owner_completion_and_seven_day_boundary(self):
+        today = timezone.localdate()
+        trip = self.make_attention_trip()
+        expected = []
+        for days in [-3, 0, 7, 8, None]:
+            task = Task.objects.create(name=f"My task {days}", trip=trip,
+                                       assigned_to=self.employee,
+                                       due_date=today + timedelta(days=days) if days is not None else None)
+            if days is not None and days <= 7:
+                expected.append(task.pk)
+        Task.objects.create(name="Already done", trip=trip, assigned_to=self.employee,
+                            due_date=today, status=Task.Status.DONE)
+        other = Employee.objects.create(user=get_user_model().objects.create_user(email="other-owner@example.com"))
+        Task.objects.create(name="Someone else's work", trip=trip, assigned_to=other, due_date=today)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual([task.pk for task in response.context["my_tasks"]], expected)
+        self.assertEqual(response.context["my_task_count"], 3)
+        self.assertNotContains(response, "Someone else's work")
+        self.assertNotContains(response, "Already done")
+        self.assertNotContains(response, 'class="attention-complete"')
+
+    def test_unassigned_work_orders_null_dates_last_and_counts_before_limit(self):
+        trip = self.make_attention_trip()
+        undated = Task.objects.create(name="No deadline", trip=trip)
+        dated = [Task.objects.create(name=f"Unassigned {day}", trip=trip,
+                 due_date=timezone.localdate() + timedelta(days=day)) for day in [-2, -1, 0, 1, 2, 3]]
+        Task.objects.create(name="Finished unassigned", trip=trip, status=Task.Status.DONE)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual(response.context["unassigned_task_count"], 7)
+        self.assertEqual(response.context["unassigned_overdue_count"], 2)
+        self.assertEqual([task.pk for task in response.context["unassigned_tasks"]], [task.pk for task in dated])
+        self.assertContains(response, "Showing the 6 earliest deadlines of 7")
+        dated[-1].delete()
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual(response.context["unassigned_tasks"][-1].pk, undated.pk)
+
+    def test_departures_include_today_and_day_thirty_and_exclude_closed(self):
+        trips = [self.make_attention_trip(name=f"Departure {day}", days=day) for day in [-1, 0, 30, 31]]
+        for name in ["Completed", "Closed", "Cancelled", "Canceled"]:
+            status = TripStatus.objects.create(name=name)
+            self.make_attention_trip(name=f"Excluded {name}", days=1, status=status)
+        Task.objects.create(name="Remaining work", trip=trips[1])
+        Task.objects.create(name="Finished work", trip=trips[1], status=Task.Status.DONE)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual([trip.pk for trip in response.context["departures"]], [trips[1].pk, trips[2].pk])
+        self.assertEqual(response.context["departure_count"], 2)
+        self.assertEqual(response.context["departures"][0].open_tasks, 1)
+        self.assertContains(response, "Departs today")
+        self.assertContains(response, "30 days to go")
+
+    def test_dashboard_completion_returns_home_and_updates_attention_counts(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="change_task"))
+        trip = self.make_attention_trip()
+        task = Task.objects.create(name="Finish from dashboard", trip=trip,
+                                   assigned_to=self.employee, due_date=timezone.localdate())
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(reverse("trip_dashboard")), 'class="attention-complete"')
+        response = self.client.post(reverse("task_quick_update", args=[task.pk]),
+                                    {"status": "done", "next": reverse("trip_dashboard")})
+        self.assertRedirects(response, reverse("trip_dashboard"))
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.DONE)
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual(response.context["my_task_count"], 0)
+        self.assertEqual(response.context["open_task_count"], 0)
+        self.assertEqual(response.context["departures"][0].open_tasks, 0)
+        self.assertContains(response, "You’re caught up for the week.")
+
+    def test_assigning_from_dashboard_returns_home_and_moves_task_to_my_work(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="change_task"))
+        trip = self.make_attention_trip()
+        task = Task.objects.create(name="Give this task an owner", trip=trip,
+                                   due_date=timezone.localdate())
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("task_update", args=[task.pk]) + "?return_to=dashboard", {
+            "name": task.name, "trip": trip.pk, "assigned_to": self.employee.pk,
+            "status": task.status, "due_date": task.due_date.isoformat(),
+            "days_to_before_trip": "", "notes": "",
+        })
+        self.assertRedirects(response, reverse("trip_dashboard"))
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertEqual(response.context["unassigned_task_count"], 0)
+        self.assertEqual([item.pk for item in response.context["my_tasks"]], [task.pk])
+
+    def test_dashboard_hides_sections_and_denies_completion_without_permissions(self):
+        trip = self.make_attention_trip(name="Hidden departure")
+        task = Task.objects.create(name="Hidden task", trip=trip, assigned_to=self.employee,
+                                   due_date=timezone.localdate())
+        self.user.user_permissions.clear()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("trip_dashboard"))
+        self.assertNotContains(response, "Hidden departure")
+        self.assertNotContains(response, "Hidden task")
+        self.assertNotContains(response, 'id="my-work"')
+        self.assertNotContains(response, 'id="unassigned-work"')
+        self.assertNotContains(response, 'id="departures"')
+        self.assertEqual(self.client.post(reverse("task_quick_update", args=[task.pk]),
+                                         {"status": "done", "next": "/"}).status_code, 403)
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.NOT_STARTED)
 
 
 class TripListQuickUpdateTests(TestCase):
