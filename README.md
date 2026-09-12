@@ -73,6 +73,8 @@ The default compose file is for local development only. It reads its settings fr
 
 On startup, the web container waits for PostgreSQL, runs migrations, seeds the default statuses and permission groups, collects static files, and starts Django.
 
+With `DJANGO_DEBUG=0`, collected CSS and JavaScript use content-based filenames through Django's `STORAGES` setting. Rebuilding and restarting the production stack publishes new asset URLs, so users receive changed files on their next page load without clearing their browser cache. Keep `collectstatic` in the startup sequence; production templates need its generated manifest.
+
 PostgreSQL is only exposed inside the Docker network by default, so it will not conflict with another local Postgres running on your Mac.
 
 For Cloudflare Tunnel testing, copy `.env.production.example` to `.env`, replace the secret values, and run:
@@ -151,7 +153,7 @@ python manage.py check
 Run tests without PostgreSQL:
 
 ```bash
-DJANGO_DATABASE=sqlite python manage.py test
+DJANGO_DATABASE=sqlite DJANGO_DEBUG=1 python manage.py test
 ```
 
 Run against PostgreSQL:

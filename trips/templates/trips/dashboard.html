@@ -1,129 +1,85 @@
 {% extends "base.html" %}
-
-{% block title %}Dashboard | Legit Dashboard{% endblock %}
-
+{% load static %}
+{% block title %}Needs attention | Legit Dashboard{% endblock %}
 {% block content %}
-  <section class="hero-shell">
-    <div class="hero-copy">
-      <p class="page-kicker">Daily operations</p>
-      <h1>Dashboard</h1>
-      <p class="eyebrow">Upcoming departures and work to follow up on.</p>
-    </div>
+<link rel="stylesheet" href="{% static 'trips/dashboard.css' %}">
+<div class="attention-dashboard">
+  <section class="attention-heading">
+    <div><p class="page-kicker">{{ today|date:"l, F j" }}</p><h1>Needs attention</h1><p class="eyebrow">Your next steps, before the next departure.</p></div>
+    {% if can_view_tasks %}<a class="button secondary" href="{% url 'task_list' %}">All tasks <span aria-hidden="true">↗</span></a>{% endif %}
   </section>
 
-  <section class="grid dashboard-metrics" aria-label="Dashboard metrics">
-    <div class="panel metric">
-      <span class="metric-label">Total trips</span>
-      <strong>{{ trip_count }}</strong>
-      <span class="metric-note">All recorded trips</span>
-    </div>
-    {% if can_view_tasks %}<div class="panel metric">
-      <span class="metric-label">Open tasks</span>
-      <strong>{{ open_task_count }}</strong>
-      <a class="metric-overdue{% if overdue_task_count %} has-overdue{% endif %}" href="{% url 'task_list' %}?view=overdue">{{ overdue_task_count }} overdue</a>
-    </div>{% endif %}
-    <div class="panel metric">
-      <span class="metric-label">Traveling now</span>
-      <strong>{{ running_trip_count }}</strong>
-      <span class="metric-note">Trips currently underway</span>
-    </div>
+  <section class="attention-metrics" aria-label="Operations overview">
+    {% if can_view_tasks %}
+    <a class="attention-metric" href="#my-work"><span>My work this week</span><strong>{{ my_task_count }}</strong><small>Includes overdue tasks</small></a>
+    <a class="attention-metric" href="{% url 'task_list' %}?view=overdue"><span>Team overdue</span><strong{% if overdue_task_count %} class="attention-danger"{% endif %}>{{ overdue_task_count }}</strong><small>{{ overdue_task_count }} overdue · {{ open_task_count }} open tasks</small></a>
+    {% endif %}
+    {% if can_view_trips %}<a class="attention-metric" href="#departures"><span>Departing soon</span><strong>{{ departure_count }}</strong><small>In the next 30 days</small></a>
+    <a class="attention-metric" href="{% url 'trip_list' %}"><span>Traveling now</span><strong>{{ running_trip_count }}</strong><small>Trips currently underway</small></a>{% endif %}
   </section>
 
-  <section class="table-card">
-    <div class="table-header">
-      <div>
-        <p class="page-kicker">Trip board</p>
-        <h2>Running and upcoming trips</h2>
-      </div>
-      <p class="table-intro">Departure dates, owners, and remaining tasks.</p>
+  <div class="attention-columns">
+    {% if can_view_tasks %}
+    <section class="attention-panel" id="my-work" aria-labelledby="my-work-heading">
+      <div class="attention-panel-heading"><div><h2 id="my-work-heading">My work today &amp; ahead <span class="attention-count">{{ my_task_count }}</span></h2><p>Overdue and due in the next 7 days.</p></div></div>
+      <ul class="attention-task-list">
+        {% for task in my_tasks %}
+        <li class="attention-task" data-tone="{{ task.attention.tone }}">
+          <div class="attention-task-copy">
+            {% if can_change_tasks %}<a class="attention-task-title" href="{% url 'task_update' task.pk %}?return_to=dashboard">{{ task.name }}</a>{% else %}<strong class="attention-task-title">{{ task.name }}</strong>{% endif %}
+            {% if can_view_trips %}<a class="attention-trip-link" href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a>{% else %}<span class="attention-trip-link">{{ task.trip.name }}</span>{% endif %}
+            <div class="attention-task-meta"><span class="attention-due">{{ task.attention.due_label }}</span><span class="status" data-task-status="{{ task.status }}">{{ task.get_status_display }}</span></div>
+          </div>
+          {% if can_change_tasks %}<form method="post" action="{% url 'task_quick_update' task.pk %}" class="attention-complete" data-preserve-scroll="true">
+            {% csrf_token %}<input type="hidden" name="status" value="done"><input type="hidden" name="next" value="{% url 'trip_dashboard' %}">
+            <button type="submit" class="secondary" aria-label="Complete {{ task.name }}"><span aria-hidden="true">✓</span> Complete</button>
+          </form>{% endif %}
+        </li>
+        {% empty %}<li class="attention-empty"><strong>You’re caught up for the week.</strong><p>No overdue tasks or deadlines in the next 7 days assigned to you.</p></li>{% endfor %}
+      </ul>
+      <div class="attention-panel-footer">{% if my_task_count > 8 %}<span>Showing the 8 earliest deadlines of {{ my_task_count }}.</span>{% endif %}<a href="{% url 'task_list' %}?view=mine">All my tasks <span aria-hidden="true">→</span></a><small>Includes later tasks and tasks without a due date.</small></div>
+    </section>
+
+    <section class="attention-panel" id="unassigned-work" aria-labelledby="unassigned-heading">
+      <div class="attention-panel-heading"><div><h2 id="unassigned-heading">Needs an owner <span class="attention-count">{{ unassigned_task_count }}</span></h2><p>{% if unassigned_overdue_count %}<span class="attention-danger">{{ unassigned_overdue_count }} overdue.</span> {% endif %}Unassigned work, earliest deadlines first.</p></div></div>
+      <ul class="attention-task-list">
+        {% for task in unassigned_tasks %}
+        <li class="attention-task" data-tone="{{ task.attention.tone }}">
+          <div class="attention-task-copy"><strong class="attention-task-title">{{ task.name }}</strong>
+            {% if can_view_trips %}<a class="attention-trip-link" href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a>{% else %}<span class="attention-trip-link">{{ task.trip.name }}</span>{% endif %}
+            <div class="attention-task-meta"><span class="attention-due">{{ task.attention.due_label }}</span><span class="status" data-task-status="{{ task.status }}">{{ task.get_status_display }}</span></div>
+          </div>
+          {% if can_change_tasks %}<a class="button secondary attention-assign" href="{% url 'task_update' task.pk %}?return_to=dashboard" aria-label="Assign {{ task.name }}">Assign</a>{% endif %}
+        </li>
+        {% empty %}<li class="attention-empty"><strong>Every open task has an owner.</strong><p>New unassigned tasks will appear here.</p></li>{% endfor %}
+      </ul>
+      <div class="attention-panel-footer">{% if unassigned_task_count > 6 %}<span>Showing the 6 earliest deadlines of {{ unassigned_task_count }}.</span>{% endif %}<a href="{% url 'task_list' %}?view=open&amp;assigned_to=unassigned&amp;sort=due">All unassigned tasks <span aria-hidden="true">→</span></a></div>
+    </section>
+    {% endif %}
+  </div>
+
+  {% if can_view_trips %}
+  <section class="attention-panel attention-departures" id="departures" aria-labelledby="departures-heading">
+    <div class="attention-panel-heading"><div><h2 id="departures-heading">Departures in the next 30 days</h2><p>The people and remaining work behind each departure.</p></div><a href="{% url 'trip_list' %}">All trips <span aria-hidden="true">→</span></a></div>
+    <div class="departure-list">
+      {% for trip in departures %}
+      <article class="departure-row">
+        <div class="departure-date"><strong>{{ trip.start_date|date:"j" }}</strong><span>{{ trip.start_date|date:"M" }}</span></div>
+        <div class="departure-copy"><h3><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></h3><p>{{ trip.trip_manager }} <span aria-hidden="true">·</span> {{ trip.start_date|date:"M j" }}–{{ trip.end_date|date:"M j, Y" }}</p><span class="status" data-status-tone="{{ trip.status.color_tone }}">{{ trip.status }}</span></div>
+        <div class="departure-readiness"><strong>{% if trip.days_until_departure == 0 %}Departs today{% elif trip.days_until_departure == 1 %}Departs tomorrow{% else %}{{ trip.days_until_departure }} days to go{% endif %}</strong>{% if can_view_tasks %}<a href="{% url 'task_list' %}?view=open&amp;trip={{ trip.pk }}">{{ trip.open_tasks }} unfinished task{{ trip.open_tasks|pluralize }} <span aria-hidden="true">→</span></a>{% endif %}{% if perms.trips.add_task %}<a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>{% endif %}</div>
+      </article>
+      {% empty %}<div class="attention-empty"><strong>No departures in the next 30 days.</strong><p>Your later trips are available in All trips.</p></div>{% endfor %}
     </div>
-    <table class="responsive-table">
-      <thead>
-        <tr>
-          <th>Trip</th>
-          <th>Dates</th>
-          <th>Manager</th>
-          <th>Status</th>
-          <th>Open tasks</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for trip in upcoming_trips %}
-          <tr>
-            <td data-label="Trip"><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a>{% if trip.trip_leader %}<br>{{ trip.trip_leader }}{% endif %}</td>
-            <td data-label="Dates">{{ trip.start_date }} - {{ trip.end_date }}</td>
-            <td data-label="Manager">{{ trip.trip_manager }}</td>
-            <td data-label="Status"><span class="status" data-status-tone="{{ trip.status.color_tone }}">{{ trip.status }}</span></td>
-            <td data-label="Open tasks">{{ trip.open_tasks }}{% if perms.trips.add_task %}<br><a href="{% url 'task_create' %}?trip={{ trip.pk }}">Add task</a>{% endif %}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="empty-state">No running or upcoming trips.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </section>
+  {% endif %}
 
-  {% if can_view_tasks %}<section class="table-card" style="margin-top:18px">
-    <div class="table-header">
-      <div>
-        <p class="page-kicker">Tasks</p>
-        <h2>Open tasks</h2>
-      </div>
-      <p class="table-intro">Ordered by due date.</p>
-    </div>
-    <table class="responsive-table">
-      <thead>
-        <tr>
-          <th>Task</th>
-          <th>Trip</th>
-          <th>Assigned to</th>
-          <th>Status</th>
-          <th>Due</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for task in open_tasks %}
-          <tr>
-            <td data-label="Task"><a href="{% url 'task_update' task.pk %}">{{ task.name }}</a></td>
-            <td data-label="Trip"><a href="{{ task.trip.get_absolute_url }}">{{ task.trip.name }}</a></td>
-            <td data-label="Assigned to">{{ task.assigned_to|default:"Unassigned" }}</td>
-            <td data-label="Status"><span class="status" data-task-status="{{ task.status }}">{{ task.get_status_display }}</span></td>
-            <td data-label="Due">{{ task.due_date|default:"No due date" }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="empty-state">No open tasks.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>{% endif %}
-
-  {% if can_view_crm %}<section class="table-card" style="margin-top:18px">
-    <div class="table-header">
-      <div>
-        <p class="page-kicker">CRM snapshot</p>
-        <h2>Top customers</h2>
-      </div>
-      <p class="table-intro">The five customers with the highest recorded trip count.</p>
-    </div>
-    <table class="responsive-table">
-      <thead>
-        <tr>
-          <th>Customer</th>
-          <th>Email</th>
-          <th>Trips</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for customer in top_customers %}
-          <tr>
-            <td data-label="Customer"><a href="{{ customer.get_absolute_url }}">{{ customer.full_name }}</a></td>
-            <td data-label="Email"><a href="mailto:{{ customer.email }}">{{ customer.email }}</a></td>
-            <td data-label="Trips">{{ customer.trip_count }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="3" class="empty-state">No customer trip history yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>{% endif %}
+  {% if can_view_crm %}
+  <details class="attention-panel customer-summary">
+    <summary>Top customers <span>By recorded trip count</span></summary>
+    <ul>{% for customer in top_customers %}<li><a href="{{ customer.get_absolute_url }}">{{ customer.full_name }}</a><span>{{ customer.trip_count }} trip{{ customer.trip_count|pluralize }}</span></li>{% empty %}<li>No customer trip history yet.</li>{% endfor %}</ul>
+    <div class="attention-panel-footer"><a href="{% url 'crm_customer_list' %}">Open CRM <span aria-hidden="true">→</span></a></div>
+  </details>
+  {% endif %}
+  {% if not can_view_tasks and not can_view_trips and not can_view_crm %}<div class="attention-panel attention-empty"><strong>Your dashboard is ready.</strong><p>Ask an administrator for access to your team’s trips or tasks.</p></div>{% endif %}
+</div>
 {% endblock %}

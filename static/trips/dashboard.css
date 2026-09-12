@@ -1,0 +1,78 @@
+.attention-dashboard { --danger: #a33b2f; }
+.attention-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+.attention-heading .button { gap: 12px; flex-shrink: 0; }
+.attention-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.attention-metric { display: grid; align-content: start; gap: 4px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); }
+.attention-metric:hover { border-color: var(--accent); color: var(--ink); }
+.attention-metric > span { font-size: 13px; font-weight: 650; }
+.attention-metric > strong { font-size: 34px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.attention-metric small { font-size: 12px; margin: 0; }
+.attention-danger { color: var(--danger); }
+.attention-columns { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.attention-panel { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: clip; }
+.attention-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px; border-bottom: 1px solid var(--line); }
+.attention-panel-heading h2 { font-size: 19px; margin-bottom: 5px; }
+.attention-panel-heading p { color: var(--muted); font-size: 13px; }
+.attention-panel-heading > a { flex-shrink: 0; font-size: 14px; }
+.attention-count { display: inline-block; padding: 2px 7px; margin-left: 4px; font-size: 12px; vertical-align: middle; border-radius: 5px; background: var(--accent-soft); color: var(--accent-dark); }
+.attention-task-list { list-style: none; margin: 0; padding: 0; }
+.attention-task { display: flex; align-items: start; gap: 16px; padding: 20px 22px; border-bottom: 1px solid var(--line); }
+.attention-task:last-child { border-bottom: 0; }
+.attention-task-copy { flex: 1; min-width: 0; }
+.attention-task-title { display: block; font-size: 15px; font-weight: 650; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.attention-trip-link { display: block; margin-top: 5px; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.attention-task-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; }
+.attention-due { font-size: 12px; font-weight: 650; }
+.attention-task[data-tone=overdue] .attention-due { color: var(--danger); }
+.attention-task[data-tone=today] .attention-due { color: var(--warn); }
+.attention-task-meta .status { padding: 3px 7px; font-size: 11px; }
+.attention-complete button, .attention-assign { min-height: 44px; font-size: 12px; padding: 8px 10px; gap: 5px; }
+.attention-complete { flex-shrink: 0; }
+.attention-panel-footer { display: flex; flex-wrap: wrap; gap: 6px; flex-direction: column; padding: 16px 22px; border-top: 1px solid var(--line); font-size: 13px; }
+.attention-panel-footer > a { align-self: start; padding-block: 6px; font-weight: 650; }
+.attention-panel-footer > span, .attention-panel-footer small { color: var(--muted); font-size: 12px; margin: 0; }
+.attention-empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
+.attention-empty strong { display: block; color: var(--ink); margin-bottom: 8px; }
+.attention-departures { margin-top: 24px; scroll-margin-top: 100px; }
+#my-work { scroll-margin-top: 100px; }
+.departure-row { display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: center; gap: 18px; padding: 22px; border-bottom: 1px solid var(--line); }
+.departure-row:last-child { border-bottom: 0; }
+.departure-date { background: var(--accent-soft); color: var(--accent-dark); border-radius: 8px; text-align: center; padding: 8px 4px; }
+.departure-date strong { display: block; font-size: 24px; line-height: 1.2; }
+.departure-date span { font-size: 12px; }
+.departure-copy { min-width: 0; }
+.departure-copy h3 { font-family: inherit; font-size: 16px; letter-spacing: 0; overflow-wrap: anywhere; }
+.departure-copy p { font-size: 13px; color: var(--muted); margin: 6px 0; overflow-wrap: anywhere; }
+.departure-readiness { display: grid; gap: 6px; font-size: 13px; text-align: right; }
+.departure-readiness > a { padding-block: 4px; }
+.customer-summary { margin-top: 24px; }
+.customer-summary summary { cursor: pointer; padding: 18px 22px; font-weight: 650; }
+.customer-summary summary span { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 12px; }
+.customer-summary ul { list-style: none; margin: 0; padding: 0 22px; }
+.customer-summary li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.customer-summary li span { flex-shrink: 0; color: var(--muted); }
+@media (max-width: 960px) {
+ .attention-columns { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 600px) {
+ .attention-heading { align-items: start; gap: 12px; margin-bottom: 20px; }
+ .attention-heading h1 { font-size: 28px; }
+ .attention-heading .page-kicker { font-size: 10px; }
+ .attention-heading .eyebrow { font-size: 13px; }
+ .attention-heading .button { padding: 8px 10px; min-height: 44px; font-size: 12px; }
+ .attention-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 20px; }
+ .attention-metric { padding: 14px; }
+ .attention-metric > span { font-size: 12px; }
+ .attention-metric > strong { font-size: 28px; }
+ .attention-metric small { font-size: 11px; }
+ .attention-panel-heading, .attention-task { padding: 18px 16px; }
+ .attention-panel-heading { flex-wrap: wrap; gap: 10px; }
+ .attention-task { gap: 12px; flex-wrap: wrap; }
+ .attention-task-copy { flex-basis: 100%; }
+ .attention-complete button, .attention-assign { min-height: 44px; padding-inline: 14px; font-size: 13px; }
+ .attention-panel-footer { padding: 14px 16px; }
+ .departure-row { grid-template-columns: 46px minmax(0,1fr); padding: 18px 16px; gap: 12px; align-items: start; }
+ .departure-readiness { grid-column: 2; text-align: left; }
+ .customer-summary summary { padding: 18px 16px; }
+ .customer-summary summary span { display: block; margin: 6px 0 0; }
+}
