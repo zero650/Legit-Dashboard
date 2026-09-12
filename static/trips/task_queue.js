@@ -143,10 +143,20 @@
 
   const bulkForm = document.getElementById('bulk-form');
   const selectAll = document.getElementById('select-all');
+  const selectionToggle = document.getElementById('selection-toggle');
+  workspace.classList.add('selection-ready');
+  function setSelecting(selecting) {
+    workspace.classList.toggle('is-selecting', selecting);
+    if (selectionToggle) {
+      selectionToggle.setAttribute('aria-pressed', String(selecting));
+      selectionToggle.textContent = selecting ? 'Done selecting' : 'Select tasks';
+    }
+  }
   const selectedRows = () => [...rows.values()].filter(row => row.querySelector('.row-select')?.checked);
   function updateSelection() {
     if (!canEdit) return;
     const count = selectedRows().length;
+    if (count) setSelecting(true);
     document.getElementById('selection-count').textContent = `${count} selected on this page`;
     bulkForm.hidden = !count;
     selectAll.checked = count > 0 && count === rows.size;
@@ -154,6 +164,13 @@
     bulkForm.querySelectorAll('button, select, input').forEach(control => control.disabled = bulkBusy || pending.size > 0);
   }
   if (bulkForm) {
+    selectionToggle.hidden = false;
+    selectionToggle.addEventListener('click', () => {
+      const selecting = !workspace.classList.contains('is-selecting');
+      if (!selecting) rows.forEach(row => { row.querySelector('.row-select').checked = false; });
+      setSelecting(selecting);
+      updateSelection();
+    });
     rows.forEach(row => row.querySelector('.row-select').addEventListener('change', updateSelection));
     selectAll.addEventListener('change', () => {
       rows.forEach(row => { row.querySelector('.row-select').checked = selectAll.checked; });
@@ -161,6 +178,7 @@
     });
     document.getElementById('clear-selection').addEventListener('click', () => {
       rows.forEach(row => { row.querySelector('.row-select').checked = false; });
+      setSelecting(false);
       updateSelection();
     });
     document.getElementById('bulk-field').addEventListener('change', event => {

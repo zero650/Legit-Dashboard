@@ -33,7 +33,7 @@
         <div class="filter-actions"><button type="submit">Apply filters</button><a href="?view={{ active_view }}" data-reset>Clear filters</a></div>
       </div>
     </form>
-    <div class="queue-summary"><span>{{ paginator.count }} task{{ paginator.count|pluralize }}{% if active_view == 'upcoming' %} · Next 7 days{% endif %}{% if filters.q %} · “{{ filters.q }}”{% endif %}</span><span id="refresh-notice" hidden>Queue updated. <a href="?{{ current_querystring }}">Refresh results</a></span><a href="?view=open" data-reset>Reset view</a></div>
+    <div class="queue-summary"><span>{{ paginator.count }} task{{ paginator.count|pluralize }}{% if active_view == 'upcoming' %} · Next 7 days{% endif %}{% if filters.q %} · “{{ filters.q }}”{% endif %}</span><span id="refresh-notice" hidden>Queue updated. <a href="?{{ current_querystring }}">Refresh results</a></span>{% if perms.trips.change_task %}<button type="button" id="selection-toggle" class="mobile-selection-toggle" aria-pressed="false" hidden>Select tasks</button>{% endif %}<a href="?view=open" data-reset>Reset view</a></div>
     {% if filter_error %}<p class="queue-error" role="alert">{{ filter_error }}</p>{% endif %}
     {% if perms.trips.change_task %}
     <form id="bulk-form" class="bulk-bar" hidden>
